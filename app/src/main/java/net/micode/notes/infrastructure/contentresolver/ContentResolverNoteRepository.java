@@ -10,14 +10,16 @@ import android.database.Cursor;
 import android.text.TextUtils;
 import android.util.Log;
 
-import net.micode.notes.data.Contact;
 import net.micode.notes.data.Notes;
 import net.micode.notes.data.Notes.CallNote;
 import net.micode.notes.data.Notes.NoteColumns;
 import net.micode.notes.domain.model.FolderDestination;
 import net.micode.notes.domain.model.NoteListItem;
+import net.micode.notes.domain.model.ScheduledReminder;
 import net.micode.notes.domain.model.WidgetBinding;
+import net.micode.notes.domain.model.WidgetNoteState;
 import net.micode.notes.domain.repository.NoteRepository;
+import net.micode.notes.domain.service.ContactNameResolver;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -53,6 +55,17 @@ public final class ContentResolverNoteRepository implements NoteRepository {
             NoteColumns.WIDGET_TYPE
     };
 
+        private static final String[] REMINDER_PROJECTION = new String[] {
+            NoteColumns.ID,
+            NoteColumns.ALERTED_DATE,
+        };
+
+        private static final String[] WIDGET_NOTE_PROJECTION = new String[] {
+            NoteColumns.ID,
+            NoteColumns.BG_COLOR_ID,
+            NoteColumns.SNIPPET,
+        };
+
     private static final String ROOT_FOLDER_SELECTION = "(" + NoteColumns.TYPE + "<>"
             + Notes.TYPE_SYSTEM + " AND " + NoteColumns.PARENT_ID + "=?) OR ("
             + NoteColumns.ID + "=" + Notes.ID_CALL_RECORD_FOLDER + " AND "
@@ -62,10 +75,13 @@ public final class ContentResolverNoteRepository implements NoteRepository {
 
     private final Context appContext;
     private final ContentResolver contentResolver;
+    private final ContactNameResolver contactNameResolver;
 
-    public ContentResolverNoteRepository(Context context, ContentResolver contentResolver) {
+    public ContentResolverNoteRepository(Context context, ContentResolver contentResolver,
+            ContactNameResolver contactNameResolver) {
         this.appContext = context.getApplicationContext();
         this.contentResolver = contentResolver;
+        this.contactNameResolver = contactNameResolver;
     }
 
     @Override
@@ -255,6 +271,68 @@ public final class ContentResolverNoteRepository implements NoteRepository {
         return widgets;
     }
 
+    @Override
+    public List<ScheduledReminder> getUpcomingReminders(long currentTimeMillis) {
+        Cursor cursor = contentResolver.query(Notes.CONTENT_NOTE_URI,
+                REMINDER_PROJECTION,
+                NoteColumns.ALERTED_DATE + ">? AND " + NoteColumns.TYPE + "=?",
+                new String[] {
+                        String.valueOf(currentTimeMillis),
+                        String.valueOf(Notes.TYPE_NOTE)
+                },
+                null);
+        ArrayList<ScheduledReminder> reminders = new ArrayList<ScheduledReminder>();
+        if (cursor == null) {
+            return reminders;
+        }
+        try {
+            while (cursor.moveToNext()) {
+                reminders.add(new ScheduledReminder(cursor.getLong(0), cursor.getLong(1)));
+            }
+        } finally {
+            cursor.close();
+        }
+        return reminders;
+    }
+
+    @Override
+    public WidgetNoteState getWidgetNoteState(int widgetId) {
+        Cursor cursor = contentResolver.query(Notes.CONTENT_NOTE_URI,
+                WIDGET_NOTE_PROJECTION,
+                NoteColumns.WIDGET_ID + "=? AND " + NoteColumns.PARENT_ID + "<>?",
+                new String[] { String.valueOf(widgetId), String.valueOf(Notes.ID_TRASH_FOLER) },
+                null);
+        if (cursor == null) {
+            return null;
+        }
+        try {
+            if (!cursor.moveToFirst()) {
+                return null;
+            }
+            if (cursor.getCount() > 1) {
+                Log.e(TAG, "Multiple notes with same widget id: " + widgetId);
+            }
+            return new WidgetNoteState(cursor.getLong(0), cursor.getInt(1), cursor.getString(2));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    @Override
+    public void clearWidgetBindings(int[] widgetIds) {
+        if (widgetIds == null || widgetIds.length == 0) {
+            return;
+        }
+        ContentValues values = new ContentValues();
+        values.put(NoteColumns.WIDGET_ID, android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID);
+        for (int widgetId : widgetIds) {
+            contentResolver.update(Notes.CONTENT_NOTE_URI,
+                    values,
+                    NoteColumns.WIDGET_ID + "=?",
+                    new String[] { String.valueOf(widgetId) });
+        }
+    }
+
     private boolean applyBatch(ArrayList<ContentProviderOperation> operations) {
         if (operations.isEmpty()) {
             return true;
@@ -277,7 +355,7 @@ public final class ContentResolverNoteRepository implements NoteRepository {
         if (parentId == Notes.ID_CALL_RECORD_FOLDER) {
             phoneNumber = getCallNumberByNoteId(noteId);
             if (!TextUtils.isEmpty(phoneNumber)) {
-                callName = Contact.getContact(appContext, phoneNumber);
+                callName = contactNameResolver.resolve(phoneNumber);
                 if (callName == null) {
                     callName = phoneNumber;
                 }

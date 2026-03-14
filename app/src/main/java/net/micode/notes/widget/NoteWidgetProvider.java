@@ -18,51 +18,22 @@ package net.micode.notes.widget;
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
-import android.util.Log;
 import android.widget.RemoteViews;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
-import net.micode.notes.data.Notes.NoteColumns;
+import net.micode.notes.domain.model.WidgetNoteState;
+import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.ui.NoteEditActivity;
 import net.micode.notes.ui.NotesListActivity;
 
 public abstract class NoteWidgetProvider extends AppWidgetProvider {
-    public static final String [] PROJECTION = new String [] {
-        NoteColumns.ID,
-        NoteColumns.BG_COLOR_ID,
-        NoteColumns.SNIPPET
-    };
-
-    public static final int COLUMN_ID           = 0;
-    public static final int COLUMN_BG_COLOR_ID  = 1;
-    public static final int COLUMN_SNIPPET      = 2;
-
-    private static final String TAG = "NoteWidgetProvider";
-
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
-        ContentValues values = new ContentValues();
-        values.put(NoteColumns.WIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-        for (int i = 0; i < appWidgetIds.length; i++) {
-            context.getContentResolver().update(Notes.CONTENT_NOTE_URI,
-                    values,
-                    NoteColumns.WIDGET_ID + "=?",
-                    new String[] { String.valueOf(appWidgetIds[i])});
-        }
-    }
-
-    private Cursor getNoteWidgetInfo(Context context, int widgetId) {
-        return context.getContentResolver().query(Notes.CONTENT_NOTE_URI,
-                PROJECTION,
-                NoteColumns.WIDGET_ID + "=? AND " + NoteColumns.PARENT_ID + "<>?",
-                new String[] { String.valueOf(widgetId), String.valueOf(Notes.ID_TRASH_FOLER) },
-                null);
+        new NotesApplicationGraph(context).clearWidgetBindingsUseCase().clear(appWidgetIds);
     }
 
     protected void update(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -74,30 +45,22 @@ public abstract class NoteWidgetProvider extends AppWidgetProvider {
         for (int i = 0; i < appWidgetIds.length; i++) {
             if (appWidgetIds[i] != AppWidgetManager.INVALID_APPWIDGET_ID) {
                 int bgId = ResourceParser.getDefaultBgId(context);
-                String snippet = "";
+                String snippet = context.getResources().getString(R.string.widget_havenot_content);
                 Intent intent = new Intent(context, NoteEditActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 intent.putExtra(Notes.INTENT_EXTRA_WIDGET_ID, appWidgetIds[i]);
                 intent.putExtra(Notes.INTENT_EXTRA_WIDGET_TYPE, getWidgetType());
 
-                Cursor c = getNoteWidgetInfo(context, appWidgetIds[i]);
-                if (c != null && c.moveToFirst()) {
-                    if (c.getCount() > 1) {
-                        Log.e(TAG, "Multiple message with same widget id:" + appWidgetIds[i]);
-                        c.close();
-                        return;
-                    }
-                    snippet = c.getString(COLUMN_SNIPPET);
-                    bgId = c.getInt(COLUMN_BG_COLOR_ID);
-                    intent.putExtra(Intent.EXTRA_UID, c.getLong(COLUMN_ID));
+                WidgetNoteState widgetState = new NotesApplicationGraph(context)
+                        .getWidgetNoteStateUseCase()
+                        .load(appWidgetIds[i], bgId, snippet);
+                bgId = widgetState.getBackgroundColorId();
+                snippet = widgetState.getSnippet();
+                if (widgetState.hasBoundNote()) {
+                    intent.putExtra(Intent.EXTRA_UID, widgetState.getNoteId());
                     intent.setAction(Intent.ACTION_VIEW);
                 } else {
-                    snippet = context.getResources().getString(R.string.widget_havenot_content);
                     intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
-                }
-
-                if (c != null) {
-                    c.close();
                 }
 
                 RemoteViews rv = new RemoteViews(context.getPackageName(), getLayoutId());
