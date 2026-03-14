@@ -39,6 +39,43 @@ import java.util.Map;
 
 public class NoteEditText extends EditText {
     private static final String TAG = "NoteEditText";
+
+    public static final class DeleteRequest {
+        private final int index;
+        private final String text;
+
+        public DeleteRequest(int index, String text) {
+            this.index = index;
+            this.text = text;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public String getText() {
+            return text;
+        }
+    }
+
+    public static final class SplitRequest {
+        private final int index;
+        private final String trailingText;
+
+        public SplitRequest(int index, String trailingText) {
+            this.index = index;
+            this.trailingText = trailingText;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+
+        public String getTrailingText() {
+            return trailingText;
+        }
+    }
+
     private int mIndex;
     private int mSelectionStartBeforeDelete;
 
@@ -61,18 +98,18 @@ public class NoteEditText extends EditText {
          * Delete current edit text when {@link KeyEvent#KEYCODE_DEL} happens
          * and the text is null
          */
-        void onEditTextDelete(int index, String text);
+        void onDeleteRequested(DeleteRequest request);
 
         /**
          * Add edit text after current edit text when {@link KeyEvent#KEYCODE_ENTER}
          * happen
          */
-        void onEditTextEnter(int index, String text);
+        void onSplitRequested(SplitRequest request);
 
         /**
          * Hide or show item option when text change
          */
-        void onTextChange(int index, boolean hasText);
+        void onTextPresenceChanged(int index, boolean hasText);
     }
 
     private OnTextViewChangeListener mOnTextViewChangeListener;
@@ -144,7 +181,8 @@ public class NoteEditText extends EditText {
             case KeyEvent.KEYCODE_DEL:
                 if (mOnTextViewChangeListener != null) {
                     if (0 == mSelectionStartBeforeDelete && mIndex != 0) {
-                        mOnTextViewChangeListener.onEditTextDelete(mIndex, getText().toString());
+                        mOnTextViewChangeListener.onDeleteRequested(
+                                new DeleteRequest(mIndex, getText().toString()));
                         return true;
                     }
                 } else {
@@ -156,7 +194,8 @@ public class NoteEditText extends EditText {
                     int selectionStart = getSelectionStart();
                     String text = getText().subSequence(selectionStart, length()).toString();
                     setText(getText().subSequence(0, selectionStart));
-                    mOnTextViewChangeListener.onEditTextEnter(mIndex + 1, text);
+                    mOnTextViewChangeListener.onSplitRequested(
+                            new SplitRequest(mIndex + 1, text));
                 } else {
                     Log.d(TAG, "OnTextViewChangeListener was not seted");
                 }
@@ -171,9 +210,9 @@ public class NoteEditText extends EditText {
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
         if (mOnTextViewChangeListener != null) {
             if (!focused && TextUtils.isEmpty(getText())) {
-                mOnTextViewChangeListener.onTextChange(mIndex, false);
+                mOnTextViewChangeListener.onTextPresenceChanged(mIndex, false);
             } else {
-                mOnTextViewChangeListener.onTextChange(mIndex, true);
+                mOnTextViewChangeListener.onTextPresenceChanged(mIndex, true);
             }
         }
         super.onFocusChanged(focused, direction, previouslyFocusedRect);

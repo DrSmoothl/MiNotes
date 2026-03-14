@@ -69,7 +69,9 @@ import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.tool.ResourceParser.NoteColorResources;
 import net.micode.notes.tool.ResourceParser.TextAppearanceResources;
 import net.micode.notes.ui.DateTimePickerDialog.OnDateTimeSetListener;
+import net.micode.notes.ui.NoteEditText.DeleteRequest;
 import net.micode.notes.ui.NoteEditText.OnTextViewChangeListener;
+import net.micode.notes.ui.NoteEditText.SplitRequest;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -406,21 +408,33 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (isFinishing()) {
             return true;
         }
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+        if (state == null) {
+            return true;
+        }
         menu.clear();
-        if (mNoteSession.getFolderId() == Notes.ID_CALL_RECORD_FOLDER) {
+        if (state.getFolderId() == Notes.ID_CALL_RECORD_FOLDER) {
             getMenuInflater().inflate(R.menu.call_note_edit, menu);
         } else {
             getMenuInflater().inflate(R.menu.note_edit, menu);
         }
-        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        if (state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             menu.findItem(R.id.menu_list_mode).setTitle(R.string.menu_normal_mode);
         } else {
             menu.findItem(R.id.menu_list_mode).setTitle(R.string.menu_list_mode);
         }
-        if (mNoteSession.hasClockAlert()) {
+        if (state.hasClockAlert()) {
             menu.findItem(R.id.menu_alert).setVisible(false);
         } else {
             menu.findItem(R.id.menu_delete_remind).setVisible(false);
+        }
+        MenuItem shareItem = menu.findItem(R.id.menu_share);
+        if (shareItem != null) {
+            shareItem.setEnabled(state.hasContent());
+        }
+        MenuItem deleteItem = menu.findItem(R.id.menu_delete);
+        if (deleteItem != null) {
+            deleteItem.setEnabled(state.isExistingNote() || state.hasContent());
         }
         return true;
     }
@@ -598,32 +612,33 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         syncSessionFromViewModel();
     }
 
-    public void onEditTextDelete(int index, String text) {
+    public void onDeleteRequested(DeleteRequest request) {
         int childCount = mEditTextList.getChildCount();
         if (childCount == 1) {
             return;
         }
         CheckListDocument document = collectCheckListDocument();
-        int focusIndex = Math.max(0, index - 1);
+        int focusIndex = Math.max(0, request.getIndex() - 1);
         int previousLength = document.getItems().get(focusIndex).getText().length();
-        CheckListDocument updatedDocument = document.mergeIntoPrevious(index);
+        CheckListDocument updatedDocument = document.mergeIntoPrevious(request.getIndex());
         mNoteEditViewModel.updateWorkingText(updatedDocument.toText());
         syncSessionFromViewModel();
         renderCheckListDocument(updatedDocument, new CheckListFocusRequest(focusIndex, previousLength));
     }
 
-    public void onEditTextEnter(int index, String text) {
+    public void onSplitRequested(SplitRequest request) {
         /**
          * Should not happen, check for debug
          */
-        if(index > mEditTextList.getChildCount()) {
+        if(request.getIndex() > mEditTextList.getChildCount()) {
             Log.e(TAG, "Index out of mEditTextList boundrary, should not happen");
         }
 
-        CheckListDocument updatedDocument = collectCheckListDocument().insertUncheckedItem(index, text);
+        CheckListDocument updatedDocument = collectCheckListDocument()
+                .insertUncheckedItem(request.getIndex(), request.getTrailingText());
         mNoteEditViewModel.updateWorkingText(updatedDocument.toText());
         syncSessionFromViewModel();
-        renderCheckListDocument(updatedDocument, new CheckListFocusRequest(index, 0));
+        renderCheckListDocument(updatedDocument, new CheckListFocusRequest(request.getIndex(), 0));
     }
 
     private void renderCheckListDocument(CheckListDocument document,
@@ -672,15 +687,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         final NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
         edit.setTextAppearance(TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
         CheckBox cb = ((CheckBox) view.findViewById(R.id.cb_edit_item));
-        cb.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-                    edit.setPaintFlags(edit.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-                } else {
-                    edit.setPaintFlags(Paint.ANTI_ALIAS_FLAG | Paint.DEV_KERN_TEXT_FLAG);
-                }
-            }
-        });
 
         String itemText = item.getText();
         if (itemText.startsWith(CheckListText.CHECKED_PREFIX)) {
@@ -696,13 +702,20 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             edit.setPaintFlags(edit.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
 
+        cb.setOnCheckedChangeListener(new OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                applyCheckedStyle(edit, isChecked);
+                syncCheckListStateFromViews();
+            }
+        });
+
         edit.setOnTextViewChangeListener(this);
         edit.setIndex(index);
         edit.setText(getHighlightQueryResult(itemText, mUserQuery));
         return view;
     }
 
-    public void onTextChange(int index, boolean hasText) {
+    public void onTextPresenceChanged(int index, boolean hasText) {
         if (index >= mEditTextList.getChildCount()) {
             Log.e(TAG, "Wrong index, should not happen");
             return;
@@ -712,6 +725,23 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         } else {
             mEditTextList.getChildAt(index).findViewById(R.id.cb_edit_item).setVisibility(View.GONE);
         }
+    }
+
+    private void applyCheckedStyle(NoteEditText edit, boolean isChecked) {
+        if (isChecked) {
+            edit.setPaintFlags(edit.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
+        } else {
+            edit.setPaintFlags(Paint.ANTI_ALIAS_FLAG | Paint.DEV_KERN_TEXT_FLAG);
+        }
+    }
+
+    private void syncCheckListStateFromViews() {
+        if (mNoteSession == null || mNoteSession.getCheckListMode() != TextNote.MODE_CHECK_LIST) {
+            return;
+        }
+        CheckListDocument document = collectCheckListDocument();
+        mNoteEditViewModel.updateWorkingText(document.toText());
+        syncSessionFromViewModel();
     }
 
     private EditorContentSnapshot collectWorkingText() {
