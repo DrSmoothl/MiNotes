@@ -50,9 +50,11 @@ public final class NoteEditViewModel extends ViewModel {
     private final ReminderScheduler reminderScheduler;
     private final WidgetNotifier widgetNotifier;
     private final MutableLiveData<NoteEditViewState> viewState = new MutableLiveData<NoteEditViewState>();
+    private final MutableLiveData<NoteEditUiEvent> uiEvent = new MutableLiveData<NoteEditUiEvent>();
 
     private NoteEditorSession noteSession;
     private String userQuery = "";
+    private long nextUiEventId = 1L;
 
     public NoteEditViewModel(StartNoteEditorSessionUseCase startNoteEditorSessionUseCase,
             DeleteNoteUseCase deleteNoteUseCase,
@@ -70,6 +72,10 @@ public final class NoteEditViewModel extends ViewModel {
 
     public NoteEditViewState getCurrentState() {
         return viewState.getValue();
+    }
+
+    public LiveData<NoteEditUiEvent> getUiEvent() {
+        return uiEvent;
     }
 
     public NoteEditorSession getNoteSession() {
@@ -181,6 +187,18 @@ public final class NoteEditViewModel extends ViewModel {
         return saved;
     }
 
+    public void requestClose(String workingText) {
+        boolean saved = save(workingText);
+        long folderId = noteSession == null ? 0L : noteSession.getFolderId();
+        dispatchUiEvent(NoteEditUiEvent.Type.CLOSE_EDITOR, saved, folderId);
+    }
+
+    public void requestCreateNew(String workingText) {
+        boolean saved = save(workingText);
+        long folderId = noteSession == null ? 0L : noteSession.getFolderId();
+        dispatchUiEvent(NoteEditUiEvent.Type.OPEN_NEW_NOTE, saved, folderId);
+    }
+
     public boolean deleteCurrent() {
         if (noteSession == null) {
             return false;
@@ -193,6 +211,12 @@ public final class NoteEditViewModel extends ViewModel {
         refreshWidgetIfNeeded();
         publishState();
         return deleted;
+    }
+
+    public void requestDeleteAndClose() {
+        deleteCurrent();
+        long folderId = noteSession == null ? 0L : noteSession.getFolderId();
+        dispatchUiEvent(NoteEditUiEvent.Type.CLOSE_EDITOR, false, folderId);
     }
 
     public void refreshState() {
@@ -213,6 +237,10 @@ public final class NoteEditViewModel extends ViewModel {
             return;
         }
         widgetNotifier.refresh(noteSession.getWidgetId(), noteSession.getWidgetType());
+    }
+
+    private void dispatchUiEvent(NoteEditUiEvent.Type type, boolean setResultOk, long folderId) {
+        uiEvent.setValue(new NoteEditUiEvent(nextUiEventId++, type, setResultOk, folderId));
     }
 
     private void publishState() {

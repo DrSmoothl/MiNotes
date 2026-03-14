@@ -138,6 +138,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private String mUserQuery;
     private Pattern mPattern;
     private boolean mRenderingEditorContent;
+    private long mLastHandledUiEventId;
 
     private static final class EditorContentSnapshot {
         private final String text;
@@ -400,6 +401,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
         mEditTextList = (LinearLayout) findViewById(R.id.note_edit_list);
         mNoteEditViewModel.getViewState().observe(this, this::renderViewState);
+        mNoteEditViewModel.getUiEvent().observe(this, this::handleUiEvent);
     }
 
     @Override
@@ -417,8 +419,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void handleBackNavigation() {
-        saveNote();
-        finish();
+        EditorContentSnapshot contentSnapshot = collectWorkingText();
+        mNoteEditViewModel.requestClose(contentSnapshot.text);
+        syncSessionFromViewModel();
     }
 
     private void updateScreenHeader() {
@@ -495,7 +498,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                         new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface dialog, int which) {
                                 deleteCurrentNote();
-                                finish();
                             }
                         });
                 builder.setNegativeButton(android.R.string.cancel, null);
@@ -648,21 +650,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void createNewNote(NoteEditViewState state) {
-        // Firstly, save current editing notes
-        saveNote();
-
-        // For safety, start a new NoteEditActivity
-        finish();
-        Intent intent = new Intent(this, NoteEditActivity.class);
-        intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
-        intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, state.getFolderId());
-        startActivity(intent);
+        EditorContentSnapshot contentSnapshot = collectWorkingText();
+        mNoteEditViewModel.requestCreateNew(contentSnapshot.text);
+        syncSessionFromViewModel();
     }
 
     private void deleteCurrentNote() {
-        if (!mNoteEditViewModel.deleteCurrent()) {
-            Log.e(TAG, "Delete Note error");
-        }
+        mNoteEditViewModel.requestDeleteAndClose();
         syncSessionFromViewModel();
     }
 
@@ -882,6 +876,27 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         applyEditorColors(state);
         showAlertHeader(state);
         invalidateOptionsMenu();
+    }
+
+    private void handleUiEvent(NoteEditUiEvent event) {
+        if (event == null || event.getId() <= mLastHandledUiEventId) {
+            return;
+        }
+        mLastHandledUiEventId = event.getId();
+        if (event.shouldSetResultOk()) {
+            setResult(RESULT_OK);
+        }
+        if (event.getType() == NoteEditUiEvent.Type.OPEN_NEW_NOTE) {
+            Intent intent = new Intent(this, NoteEditActivity.class);
+            intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
+            intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, event.getFolderId());
+            startActivity(intent);
+            finish();
+            return;
+        }
+        if (event.getType() == NoteEditUiEvent.Type.CLOSE_EDITOR) {
+            finish();
+        }
     }
 
     private void syncSessionFromViewModel() {
