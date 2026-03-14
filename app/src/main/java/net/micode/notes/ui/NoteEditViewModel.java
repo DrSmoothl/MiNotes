@@ -220,6 +220,8 @@ public final class NoteEditViewModel extends ViewModel {
             viewState.setValue(null);
             return;
         }
+        String content = noteSession.getContent();
+        boolean hasContent = content != null && content.trim().length() > 0;
         viewState.setValue(new NoteEditViewState(
                 noteSession.existsInDatabase(),
                 noteSession.getModifiedDate(),
@@ -230,7 +232,9 @@ public final class NoteEditViewModel extends ViewModel {
                 noteSession.getWidgetId(),
                 noteSession.getWidgetType(),
                 noteSession.getCheckListMode(),
-                noteSession.getContent(),
-                noteSession.getContent() != null && noteSession.getContent().trim().length() > 0));
+                content,
+                hasContent,
+                hasContent,
+                noteSession.existsInDatabase() || hasContent));
     }
 }

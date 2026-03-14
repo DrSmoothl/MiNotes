@@ -10,12 +10,15 @@ public final class NoteEditViewState {
     private final int widgetId;
     private final int widgetType;
     private final int checkListMode;
-        private final String content;
-        private final boolean hasContent;
+    private final String content;
+    private final boolean hasContent;
+    private final boolean canShare;
+    private final boolean canDelete;
 
     public NoteEditViewState(boolean existingNote, long modifiedDate, int backgroundColorId,
             boolean hasClockAlert, long alertDate, long folderId, int widgetId, int widgetType,
-            int checkListMode, String content, boolean hasContent) {
+            int checkListMode, String content, boolean hasContent, boolean canShare,
+            boolean canDelete) {
         this.existingNote = existingNote;
         this.modifiedDate = modifiedDate;
         this.backgroundColorId = backgroundColorId;
@@ -27,6 +30,8 @@ public final class NoteEditViewState {
         this.checkListMode = checkListMode;
         this.content = content == null ? "" : content;
         this.hasContent = hasContent;
+        this.canShare = canShare;
+        this.canDelete = canDelete;
     }
 
     public boolean isExistingNote() {
@@ -71,5 +76,13 @@ public final class NoteEditViewState {
 
     public boolean hasContent() {
         return hasContent;
+    }
+
+    public boolean canShare() {
+        return canShare;
+    }
+
+    public boolean canDelete() {
+        return canDelete;
     }
 }

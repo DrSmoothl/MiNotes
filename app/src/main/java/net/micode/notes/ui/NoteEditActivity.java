@@ -25,9 +25,11 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Paint;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.text.style.BackgroundColorSpan;
 import android.util.Log;
@@ -135,6 +137,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private String mUserQuery;
     private Pattern mPattern;
+    private boolean mRenderingEditorContent;
 
     private static final class EditorContentSnapshot {
         private final String text;
@@ -290,15 +293,20 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void renderEditorContent(NoteEditViewState state) {
-        mNoteEditor.setTextAppearance(TextAppearanceResources
-            .getTexAppearanceResource(mFontSizeId));
-        if (state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-            renderCheckListDocument(CheckListDocument.fromText(state.getContent()), null);
-        } else {
-            mNoteEditor.setText(getHighlightQueryResult(state.getContent(), mUserQuery));
-            mNoteEditor.setSelection(mNoteEditor.getText().length());
-            mEditTextList.setVisibility(View.GONE);
-            mNoteEditor.setVisibility(View.VISIBLE);
+        mRenderingEditorContent = true;
+        try {
+            mNoteEditor.setTextAppearance(TextAppearanceResources
+                .getTexAppearanceResource(mFontSizeId));
+            if (state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+                renderCheckListDocument(CheckListDocument.fromText(state.getContent()), null);
+            } else {
+                mNoteEditor.setText(getHighlightQueryResult(state.getContent(), mUserQuery));
+                mNoteEditor.setSelection(mNoteEditor.getText().length());
+                mEditTextList.setVisibility(View.GONE);
+                mNoteEditor.setVisibility(View.VISIBLE);
+            }
+        } finally {
+            mRenderingEditorContent = false;
         }
     }
 
@@ -363,6 +371,25 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         mNoteHeaderHolder.ibSetBgColor = (ImageView) findViewById(R.id.btn_set_bg_color);
         mNoteHeaderHolder.ibSetBgColor.setOnClickListener(this);
         mNoteEditor = (EditText) findViewById(R.id.note_edit_view);
+        mNoteEditor.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (mRenderingEditorContent || mNoteSession == null
+                        || mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+                    return;
+                }
+                mNoteEditViewModel.updateWorkingText(s == null ? "" : s.toString());
+                syncSessionFromViewModel();
+            }
+        });
         mNoteEditorPanel = findViewById(R.id.sv_note_edit);
         mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         mFontSizeId = mSharedPrefs.getInt(PREFERENCE_FONT_SIZE, ResourceParser.BG_DEFAULT_FONT_SIZE);
@@ -430,11 +457,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
         MenuItem shareItem = menu.findItem(R.id.menu_share);
         if (shareItem != null) {
-            shareItem.setEnabled(state.hasContent());
+            shareItem.setEnabled(state.canShare());
         }
         MenuItem deleteItem = menu.findItem(R.id.menu_delete);
         if (deleteItem != null) {
-            deleteItem.setEnabled(state.isExistingNote() || state.hasContent());
+            deleteItem.setEnabled(state.canDelete());
         }
         return true;
     }
@@ -643,6 +670,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private void renderCheckListDocument(CheckListDocument document,
             CheckListFocusRequest focusRequest) {
+        mRenderingEditorContent = true;
         mEditTextList.removeAllViews();
         int index = 0;
         for (CheckListItem item : document.getItems()) {
@@ -654,6 +682,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
         mNoteEditor.setVisibility(View.GONE);
         mEditTextList.setVisibility(View.VISIBLE);
+        mRenderingEditorContent = false;
     }
 
     private void applyCheckListFocus(CheckListFocusRequest focusRequest, int fallbackIndex) {
@@ -712,6 +741,23 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         edit.setOnTextViewChangeListener(this);
         edit.setIndex(index);
         edit.setText(getHighlightQueryResult(itemText, mUserQuery));
+        edit.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                if (mRenderingEditorContent) {
+                    return;
+                }
+                syncCheckListStateFromViews();
+            }
+        });
         return view;
     }
 
