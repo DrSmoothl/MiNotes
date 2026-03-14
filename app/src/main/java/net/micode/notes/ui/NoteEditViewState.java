@@ -14,8 +14,8 @@ public final class NoteEditViewState {
     private final boolean hasContent;
     private final boolean canShare;
     private final boolean canDelete;
-        private final boolean canSetReminder;
-        private final boolean canToggleListMode;
+    private final boolean canSetReminder;
+    private final boolean canToggleListMode;
 
     public NoteEditViewState(boolean existingNote, long modifiedDate, int backgroundColorId,
             boolean hasClockAlert, long alertDate, long folderId, int widgetId, int widgetType,

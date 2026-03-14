@@ -337,12 +337,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
         /**
          * For new note without note id, we should firstly save it to
          * generate a id. If the editing note is not worth saving, there
          * is no id which is equivalent to create new note
          */
-        if (!mNoteSession.existsInDatabase()) {
+        if (state != null && !state.isExistingNote()) {
             saveNote();
         }
         outState.putLong(Intent.EXTRA_UID, mNoteSession.getNoteId());
@@ -382,8 +383,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
             @Override
             public void afterTextChanged(Editable s) {
-                if (mRenderingEditorContent || mNoteSession == null
-                        || mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+                NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+                if (mRenderingEditorContent || state == null
+                        || state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
                     return;
                 }
                 mNoteEditViewModel.updateWorkingText(s == null ? "" : s.toString());
@@ -587,8 +589,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private int getBackgroundSelectionIndex() {
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+        int backgroundId = state == null ? ResourceParser.getDefaultBgId(this)
+                : state.getBackgroundColorId();
         for (int i = 0; i < BACKGROUND_IDS.length; i++) {
-            if (BACKGROUND_IDS[i] == mNoteSession.getBgColorId()) {
+            if (BACKGROUND_IDS[i] == backgroundId) {
                 return i;
             }
         }
@@ -607,7 +612,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private void applyFontSize(int fontSizeId) {
         mFontSizeId = fontSizeId;
         mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
-        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+        if (state != null && state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             EditorContentSnapshot contentSnapshot = collectWorkingText();
             renderCheckListDocument(CheckListDocument.fromText(contentSnapshot.text), null);
         } else {
@@ -692,18 +698,21 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private void renderCheckListDocument(CheckListDocument document,
             CheckListFocusRequest focusRequest) {
         mRenderingEditorContent = true;
-        mEditTextList.removeAllViews();
-        int index = 0;
-        for (CheckListItem item : document.getItems()) {
-            mEditTextList.addView(getListItem(item, index));
-            index++;
-        }
-        mEditTextList.addView(getListItem(new CheckListItem(false, ""), index));
-        applyCheckListFocus(focusRequest, index);
+        try {
+            mEditTextList.removeAllViews();
+            int index = 0;
+            for (CheckListItem item : document.getItems()) {
+                mEditTextList.addView(getListItem(item, index));
+                index++;
+            }
+            mEditTextList.addView(getListItem(new CheckListItem(false, ""), index));
+            applyCheckListFocus(focusRequest, index);
 
-        mNoteEditor.setVisibility(View.GONE);
-        mEditTextList.setVisibility(View.VISIBLE);
-        mRenderingEditorContent = false;
+            mNoteEditor.setVisibility(View.GONE);
+            mEditTextList.setVisibility(View.VISIBLE);
+        } finally {
+            mRenderingEditorContent = false;
+        }
     }
 
     private void applyCheckListFocus(CheckListFocusRequest focusRequest, int fallbackIndex) {
@@ -803,7 +812,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void syncCheckListStateFromViews() {
-        if (mNoteSession == null || mNoteSession.getCheckListMode() != TextNote.MODE_CHECK_LIST) {
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+        if (state == null || state.getCheckListMode() != TextNote.MODE_CHECK_LIST) {
             return;
         }
         CheckListDocument document = collectCheckListDocument();
@@ -813,7 +823,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private EditorContentSnapshot collectWorkingText() {
         boolean hasCheckedItems = false;
-        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+        if (state != null && state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             CheckListDocument document = collectCheckListDocument();
             return new EditorContentSnapshot(document.toText(), document.hasCheckedItems());
         }
