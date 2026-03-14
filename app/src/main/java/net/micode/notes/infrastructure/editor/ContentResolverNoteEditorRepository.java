@@ -39,6 +39,24 @@ public final class ContentResolverNoteEditorRepository implements NoteEditorRepo
     }
 
     @Override
+    public String getSnippet(long noteId) {
+        Cursor cursor = contentResolver.query(
+                Notes.CONTENT_NOTE_URI,
+                new String[] { NoteColumns.SNIPPET },
+                NoteColumns.ID + "=?",
+                new String[] { String.valueOf(noteId) },
+                null);
+        if (cursor == null) {
+            throw new IllegalArgumentException("Unable to find note with id " + noteId);
+        }
+        try {
+            return cursor.moveToFirst() ? cursor.getString(0) : "";
+        } finally {
+            cursor.close();
+        }
+    }
+
+    @Override
     public long findCallRecordNoteId(String phoneNumber, long callDate) {
         Cursor cursor = contentResolver.query(
                 Notes.CONTENT_DATA_URI,

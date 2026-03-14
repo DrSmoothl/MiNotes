@@ -8,6 +8,7 @@ import net.micode.notes.domain.repository.NoteRepository;
 import net.micode.notes.domain.service.ReminderScheduler;
 import net.micode.notes.domain.service.WidgetNotifier;
 import net.micode.notes.domain.usecase.editor.DeleteNoteUseCase;
+import net.micode.notes.domain.usecase.editor.GetAlarmNotePreviewUseCase;
 import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
 import net.micode.notes.domain.usecase.list.DeleteNotesUseCase;
 import net.micode.notes.domain.usecase.list.ExportNotesUseCase;
@@ -58,6 +59,10 @@ public final class NotesApplicationGraph {
 
     public DeleteNoteUseCase deleteNoteUseCase() {
         return new DeleteNoteUseCase(noteEditorRepository);
+    }
+
+    public GetAlarmNotePreviewUseCase getAlarmNotePreviewUseCase() {
+        return new GetAlarmNotePreviewUseCase(noteEditorRepository);
     }
 
     public ReminderScheduler reminderScheduler() {

@@ -35,8 +35,10 @@ import android.view.Window;
 import android.view.WindowManager;
 
 import net.micode.notes.R;
-import net.micode.notes.data.Notes;
-import net.micode.notes.tool.DataUtils;
+import net.micode.notes.domain.model.AlarmNotePreview;
+import net.micode.notes.domain.usecase.editor.GetAlarmNotePreviewUseCase;
+import net.micode.notes.inject.NotesApplicationGraph;
+import net.micode.notes.tool.TextSnippetFormatter;
 
 import java.io.IOException;
 
@@ -47,6 +49,8 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
     private static final int SNIPPET_PREW_MAX_LEN = 60;
     MediaPlayer mPlayer;
 
+    private GetAlarmNotePreviewUseCase mGetAlarmNotePreviewUseCase;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +58,7 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
 
         final Window win = getWindow();
         setShowWhenLocked(true);
+        mGetAlarmNotePreviewUseCase = new NotesApplicationGraph(this).getAlarmNotePreviewUseCase();
 
         if (!isScreenOn()) {
             setTurnScreenOn(true);
@@ -65,7 +70,12 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
 
         try {
             mNoteId = Long.valueOf(intent.getData().getPathSegments().get(1));
-            mSnippet = DataUtils.getSnippetById(this.getContentResolver(), mNoteId);
+            AlarmNotePreview preview = mGetAlarmNotePreviewUseCase.load(mNoteId);
+            if (preview == null) {
+                finish();
+                return;
+            }
+            mSnippet = TextSnippetFormatter.format(preview.getSnippet());
             mSnippet = mSnippet.length() > SNIPPET_PREW_MAX_LEN ? mSnippet.substring(0,
                     SNIPPET_PREW_MAX_LEN) + getResources().getString(R.string.notelist_string_info)
                     : mSnippet;
@@ -75,12 +85,8 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
         }
 
         mPlayer = new MediaPlayer();
-        if (DataUtils.visibleInNoteDatabase(getContentResolver(), mNoteId, Notes.TYPE_NOTE)) {
-            showActionDialog();
-            playAlarmSound();
-        } else {
-            finish();
-        }
+        showActionDialog();
+        playAlarmSound();
     }
 
     private boolean isScreenOn() {

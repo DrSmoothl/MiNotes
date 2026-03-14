@@ -5,6 +5,8 @@ import net.micode.notes.domain.model.NoteEditorSession;
 public interface NoteEditorRepository {
     boolean isVisibleNote(long noteId);
 
+    String getSnippet(long noteId);
+
     long findCallRecordNoteId(String phoneNumber, long callDate);
 
     NoteEditorSession loadSession(long noteId);

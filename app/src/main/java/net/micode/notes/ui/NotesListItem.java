@@ -30,9 +30,9 @@ import com.google.android.material.card.MaterialCardView;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
-import net.micode.notes.tool.DataUtils;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.tool.ResourceParser.NoteColorResources;
+import net.micode.notes.tool.TextSnippetFormatter;
 
 
 public class NotesListItem extends LinearLayout {
@@ -75,7 +75,7 @@ public class NotesListItem extends LinearLayout {
             mCallName.setVisibility(View.VISIBLE);
             mCallName.setText(data.getCallName());
             mTitle.setTextAppearance(R.style.TextAppearanceSecondaryItem);
-            mTitle.setText(DataUtils.getFormattedSnippet(data.getSnippet()));
+            mTitle.setText(TextSnippetFormatter.format(data.getSnippet()));
             if (data.hasAlert()) {
                 mAlert.setImageResource(R.drawable.clock);
                 mAlert.setVisibility(View.VISIBLE);
@@ -92,7 +92,7 @@ public class NotesListItem extends LinearLayout {
                                 data.getNotesCount()));
                 mAlert.setVisibility(View.GONE);
             } else {
-                mTitle.setText(DataUtils.getFormattedSnippet(data.getSnippet()));
+                mTitle.setText(TextSnippetFormatter.format(data.getSnippet()));
                 if (data.hasAlert()) {
                     mAlert.setImageResource(R.drawable.clock);
                     mAlert.setVisibility(View.VISIBLE);
