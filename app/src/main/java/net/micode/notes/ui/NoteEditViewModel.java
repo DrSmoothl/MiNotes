@@ -229,6 +229,8 @@ public final class NoteEditViewModel extends ViewModel {
                 noteSession.getFolderId(),
                 noteSession.getWidgetId(),
                 noteSession.getWidgetType(),
-                noteSession.getCheckListMode()));
+                noteSession.getCheckListMode(),
+                noteSession.getContent(),
+                noteSession.getContent() != null && noteSession.getContent().trim().length() > 0));
     }
 }

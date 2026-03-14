@@ -58,6 +58,8 @@ import com.google.android.material.appbar.MaterialToolbar;
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.data.Notes.TextNote;
+import net.micode.notes.domain.model.CheckListDocument;
+import net.micode.notes.domain.model.CheckListItem;
 import net.micode.notes.domain.model.CheckListText;
 import net.micode.notes.domain.model.NoteEditorSession;
 import net.micode.notes.domain.usecase.editor.DeleteNoteUseCase;
@@ -139,6 +141,16 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         private EditorContentSnapshot(String text, boolean hasCheckedItems) {
             this.text = text;
             this.hasCheckedItems = hasCheckedItems;
+        }
+    }
+
+    private static final class CheckListFocusRequest {
+        private final int index;
+        private final int selection;
+
+        private CheckListFocusRequest(int index, int selection) {
+            this.index = index;
+            this.selection = selection;
         }
     }
 
@@ -279,9 +291,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         mNoteEditor.setTextAppearance(TextAppearanceResources
             .getTexAppearanceResource(mFontSizeId));
         if (state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-            switchToListMode(mNoteSession.getContent());
+            renderCheckListDocument(CheckListDocument.fromText(state.getContent()), null);
         } else {
-            mNoteEditor.setText(getHighlightQueryResult(mNoteSession.getContent(), mUserQuery));
+            mNoteEditor.setText(getHighlightQueryResult(state.getContent(), mUserQuery));
             mNoteEditor.setSelection(mNoteEditor.getText().length());
             mEditTextList.setVisibility(View.GONE);
             mNoteEditor.setVisibility(View.VISIBLE);
@@ -535,7 +547,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
         if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             EditorContentSnapshot contentSnapshot = collectWorkingText();
-            switchToListMode(contentSnapshot.text);
+            renderCheckListDocument(CheckListDocument.fromText(contentSnapshot.text), null);
         } else {
             mNoteEditor.setTextAppearance(
                     TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
@@ -591,25 +603,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (childCount == 1) {
             return;
         }
-
-        for (int i = index + 1; i < childCount; i++) {
-            ((NoteEditText) mEditTextList.getChildAt(i).findViewById(R.id.et_edit_text))
-                    .setIndex(i - 1);
-        }
-
-        mEditTextList.removeViewAt(index);
-        NoteEditText edit = null;
-        if(index == 0) {
-            edit = (NoteEditText) mEditTextList.getChildAt(0).findViewById(
-                    R.id.et_edit_text);
-        } else {
-            edit = (NoteEditText) mEditTextList.getChildAt(index - 1).findViewById(
-                    R.id.et_edit_text);
-        }
-        int length = edit.length();
-        edit.append(text);
-        edit.requestFocus();
-        edit.setSelection(length);
+        CheckListDocument document = collectCheckListDocument();
+        int focusIndex = Math.max(0, index - 1);
+        int previousLength = document.getItems().get(focusIndex).getText().length();
+        CheckListDocument updatedDocument = document.mergeIntoPrevious(index);
+        mNoteEditViewModel.updateWorkingText(updatedDocument.toText());
+        syncSessionFromViewModel();
+        renderCheckListDocument(updatedDocument, new CheckListFocusRequest(focusIndex, previousLength));
     }
 
     public void onEditTextEnter(int index, String text) {
@@ -620,32 +620,34 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             Log.e(TAG, "Index out of mEditTextList boundrary, should not happen");
         }
 
-        View view = getListItem(text, index);
-        mEditTextList.addView(view, index);
-        NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
-        edit.requestFocus();
-        edit.setSelection(0);
-        for (int i = index + 1; i < mEditTextList.getChildCount(); i++) {
-            ((NoteEditText) mEditTextList.getChildAt(i).findViewById(R.id.et_edit_text))
-                    .setIndex(i);
-        }
+        CheckListDocument updatedDocument = collectCheckListDocument().insertUncheckedItem(index, text);
+        mNoteEditViewModel.updateWorkingText(updatedDocument.toText());
+        syncSessionFromViewModel();
+        renderCheckListDocument(updatedDocument, new CheckListFocusRequest(index, 0));
     }
 
-    private void switchToListMode(String text) {
+    private void renderCheckListDocument(CheckListDocument document,
+            CheckListFocusRequest focusRequest) {
         mEditTextList.removeAllViews();
-        String[] items = text.split("\n");
         int index = 0;
-        for (String item : items) {
-            if(!TextUtils.isEmpty(item)) {
-                mEditTextList.addView(getListItem(item, index));
-                index++;
-            }
+        for (CheckListItem item : document.getItems()) {
+            mEditTextList.addView(getListItem(item, index));
+            index++;
         }
-        mEditTextList.addView(getListItem("", index));
-        mEditTextList.getChildAt(index).findViewById(R.id.et_edit_text).requestFocus();
+        mEditTextList.addView(getListItem(new CheckListItem(false, ""), index));
+        applyCheckListFocus(focusRequest, index);
 
         mNoteEditor.setVisibility(View.GONE);
         mEditTextList.setVisibility(View.VISIBLE);
+    }
+
+    private void applyCheckListFocus(CheckListFocusRequest focusRequest, int fallbackIndex) {
+        int targetIndex = focusRequest == null ? fallbackIndex : focusRequest.index;
+        int selection = focusRequest == null ? 0 : focusRequest.selection;
+        NoteEditText target = (NoteEditText) mEditTextList.getChildAt(targetIndex)
+                .findViewById(R.id.et_edit_text);
+        target.requestFocus();
+        target.setSelection(Math.min(selection, target.length()));
     }
 
     private Spannable getHighlightQueryResult(String fullText, String userQuery) {
@@ -665,7 +667,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         return spannable;
     }
 
-    private View getListItem(String item, int index) {
+    private View getListItem(CheckListItem item, int index) {
         View view = LayoutInflater.from(this).inflate(R.layout.note_edit_list_item, null);
         final NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
         edit.setTextAppearance(TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
@@ -680,19 +682,23 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             }
         });
 
-        if (item.startsWith(CheckListText.CHECKED_PREFIX)) {
+        String itemText = item.getText();
+        if (itemText.startsWith(CheckListText.CHECKED_PREFIX)) {
             cb.setChecked(true);
             edit.setPaintFlags(edit.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-            item = item.substring(CheckListText.CHECKED_PREFIX.length(), item.length()).trim();
-        } else if (item.startsWith(CheckListText.UNCHECKED_PREFIX)) {
+            itemText = itemText.substring(CheckListText.CHECKED_PREFIX.length(), itemText.length()).trim();
+        } else if (itemText.startsWith(CheckListText.UNCHECKED_PREFIX)) {
             cb.setChecked(false);
             edit.setPaintFlags(Paint.ANTI_ALIAS_FLAG | Paint.DEV_KERN_TEXT_FLAG);
-            item = item.substring(CheckListText.UNCHECKED_PREFIX.length(), item.length()).trim();
+            itemText = itemText.substring(CheckListText.UNCHECKED_PREFIX.length(), itemText.length()).trim();
+        } else if (item.isChecked()) {
+            cb.setChecked(true);
+            edit.setPaintFlags(edit.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
 
         edit.setOnTextViewChangeListener(this);
         edit.setIndex(index);
-        edit.setText(getHighlightQueryResult(item, mUserQuery));
+        edit.setText(getHighlightQueryResult(itemText, mUserQuery));
         return view;
     }
 
@@ -711,24 +717,24 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private EditorContentSnapshot collectWorkingText() {
         boolean hasCheckedItems = false;
         if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < mEditTextList.getChildCount(); i++) {
-                View view = mEditTextList.getChildAt(i);
-                NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
-                if (!TextUtils.isEmpty(edit.getText())) {
-                    if (((CheckBox) view.findViewById(R.id.cb_edit_item)).isChecked()) {
-                        sb.append(CheckListText.CHECKED_PREFIX).append(" ")
-                                .append(edit.getText()).append("\n");
-                        hasCheckedItems = true;
-                    } else {
-                        sb.append(CheckListText.UNCHECKED_PREFIX).append(" ")
-                                .append(edit.getText()).append("\n");
-                    }
-                }
-            }
-            return new EditorContentSnapshot(sb.toString(), hasCheckedItems);
+            CheckListDocument document = collectCheckListDocument();
+            return new EditorContentSnapshot(document.toText(), document.hasCheckedItems());
         }
         return new EditorContentSnapshot(mNoteEditor.getText().toString(), false);
+    }
+
+    private CheckListDocument collectCheckListDocument() {
+        java.util.ArrayList<CheckListItem> items = new java.util.ArrayList<CheckListItem>();
+        for (int i = 0; i < mEditTextList.getChildCount(); i++) {
+            View view = mEditTextList.getChildAt(i);
+            NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
+            if (TextUtils.isEmpty(edit.getText())) {
+                continue;
+            }
+            boolean checked = ((CheckBox) view.findViewById(R.id.cb_edit_item)).isChecked();
+            items.add(new CheckListItem(checked, edit.getText().toString()));
+        }
+        return new CheckListDocument(items);
     }
 
     private boolean saveNote() {
