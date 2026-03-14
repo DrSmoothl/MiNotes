@@ -18,13 +18,10 @@ package net.micode.notes.ui;
 
 import android.app.Dialog;
 import android.appwidget.AppWidgetManager;
-import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -60,14 +57,20 @@ import com.google.android.material.appbar.MaterialToolbar;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
-import net.micode.notes.data.Notes.NoteColumns;
-import net.micode.notes.model.WorkingNote;
-import net.micode.notes.tool.BackupUtils;
-import net.micode.notes.tool.DataUtils;
+import net.micode.notes.domain.model.ExportedTextFile;
+import net.micode.notes.domain.model.FolderDestination;
+import net.micode.notes.domain.model.NoteEditorSession;
+import net.micode.notes.domain.model.NoteListItem;
+import net.micode.notes.domain.model.WidgetBinding;
+import net.micode.notes.domain.service.WidgetNotifier;
+import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
+import net.micode.notes.domain.usecase.list.DeleteNotesUseCase;
+import net.micode.notes.domain.usecase.list.ExportNotesUseCase;
+import net.micode.notes.domain.usecase.list.FolderManagementUseCase;
+import net.micode.notes.domain.usecase.list.LoadNotesUseCase;
+import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.ui.NotesListAdapter.AppWidgetAttribute;
-import net.micode.notes.widget.NoteWidgetProvider_2x;
-import net.micode.notes.widget.NoteWidgetProvider_4x;
 
 import java.util.ArrayList;
 import java.io.BufferedReader;
@@ -89,28 +92,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private static final String PREFERENCE_ADD_INTRODUCTION = "net.micode.notes.introduction";
 
-        private static final String[] FOLDER_PROJECTION = new String[] {
-            NoteColumns.ID,
-            NoteColumns.SNIPPET
-        };
-
-        private static final int FOLDER_ID_COLUMN = 0;
-
-        private static final int FOLDER_NAME_COLUMN = 1;
-
     private enum ListEditState {
         NOTE_LIST, SUB_FOLDER, CALL_RECORD_FOLDER
     };
-
-    private static final class FolderOption {
-        final long id;
-        final String name;
-
-        FolderOption(long id, String name) {
-            this.id = id;
-            this.name = name;
-        }
-    }
 
     private ListEditState mState;
 
@@ -130,22 +114,25 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private long mCurrentFolderId;
 
-    private ContentResolver mContentResolver;
-
     private ModeCallback mModeCallBack;
+
+    private LoadNotesUseCase mLoadNotesUseCase;
+
+    private FolderManagementUseCase mFolderManagementUseCase;
+
+    private DeleteNotesUseCase mDeleteNotesUseCase;
+
+    private ExportNotesUseCase mExportNotesUseCase;
+
+    private WidgetNotifier mWidgetNotifier;
+
+    private StartNoteEditorSessionUseCase mStartNoteEditorSessionUseCase;
 
     private static final String TAG = "NotesListActivity";
 
     public static final int NOTES_LISTVIEW_SCROLL_RATE = 30;
 
     private NoteItemData mFocusNoteDataItem;
-
-    private static final String NORMAL_SELECTION = NoteColumns.PARENT_ID + "=?";
-
-    private static final String ROOT_FOLDER_SELECTION = "(" + NoteColumns.TYPE + "<>"
-            + Notes.TYPE_SYSTEM + " AND " + NoteColumns.PARENT_ID + "=?)" + " OR ("
-            + NoteColumns.ID + "=" + Notes.ID_CALL_RECORD_FOLDER + " AND "
-            + NoteColumns.NOTES_COUNT + ">0)";
 
     private final ExecutorService mBackgroundExecutor = Executors.newSingleThreadExecutor();
 
@@ -210,11 +197,13 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 }
             }
 
-            WorkingNote note = WorkingNote.createEmptyNote(this, Notes.ID_ROOT_FOLDER,
-                    AppWidgetManager.INVALID_APPWIDGET_ID, Notes.TYPE_WIDGET_INVALIDE,
+            NoteEditorSession note = mStartNoteEditorSessionUseCase.startNew(
+                    Notes.ID_ROOT_FOLDER,
+                    AppWidgetManager.INVALID_APPWIDGET_ID,
+                    Notes.TYPE_WIDGET_INVALIDE,
                     ResourceParser.RED);
             note.setWorkingText(sb.toString());
-            if (note.saveNote()) {
+            if (note.save()) {
                 sp.edit().putBoolean(PREFERENCE_ADD_INTRODUCTION, true).commit();
             } else {
                 Log.e(TAG, "Save introduction note error");
@@ -230,7 +219,13 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void initResources() {
-        mContentResolver = this.getContentResolver();
+        NotesApplicationGraph graph = new NotesApplicationGraph(this);
+        mLoadNotesUseCase = graph.loadNotesUseCase();
+        mFolderManagementUseCase = graph.folderManagementUseCase();
+        mDeleteNotesUseCase = graph.deleteNotesUseCase();
+        mExportNotesUseCase = graph.exportNotesUseCase();
+        mWidgetNotifier = graph.widgetNotifier();
+        mStartNoteEditorSessionUseCase = graph.startNoteEditorSessionUseCase();
         mCurrentFolderId = Notes.ID_ROOT_FOLDER;
         mToolbar = (MaterialToolbar) findViewById(R.id.top_app_bar);
         setSupportActionBar(mToolbar);
@@ -263,7 +258,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             getMenuInflater().inflate(R.menu.note_list_options, menu);
             mMoveMenu = menu.findItem(R.id.move);
             if (mFocusNoteDataItem.getParentId() == Notes.ID_CALL_RECORD_FOLDER
-                    || DataUtils.getUserFolderCount(mContentResolver) == 0) {
+                    || mFolderManagementUseCase.getUserFolderCount() == 0) {
                 mMoveMenu.setVisible(false);
             } else {
                 mMoveMenu.setVisible(true);
@@ -352,21 +347,14 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void startAsyncNotesListQuery() {
-        final String selection = (mCurrentFolderId == Notes.ID_ROOT_FOLDER)
-                ? ROOT_FOLDER_SELECTION : NORMAL_SELECTION;
         mBackgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                Cursor cursor = mContentResolver.query(Notes.CONTENT_NOTE_URI,
-                        NoteItemData.PROJECTION,
-                        selection,
-                        new String[] { String.valueOf(mCurrentFolderId) },
-                        NoteColumns.TYPE + " DESC," + NoteColumns.MODIFIED_DATE + " DESC");
-                final ArrayList<NoteItemData> items = buildNoteItems(cursor);
+                final List<NoteListItem> items = mLoadNotesUseCase.load(mCurrentFolderId);
                 mMainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mNotesListAdapter.submitList(items);
+                        mNotesListAdapter.submitList(mapToUiItems(items));
                         updateTopBar(items.size());
                     }
                 });
@@ -374,61 +362,34 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         });
     }
 
-    private ArrayList<NoteItemData> buildNoteItems(Cursor cursor) {
-        ArrayList<NoteItemData> items = new ArrayList<NoteItemData>();
-        if (cursor == null) {
-            return items;
+    private ArrayList<NoteItemData> mapToUiItems(List<NoteListItem> items) {
+        ArrayList<NoteItemData> uiItems = new ArrayList<NoteItemData>();
+        if (items == null) {
+            return uiItems;
         }
-        try {
-            if (cursor.moveToFirst()) {
-                do {
-                    items.add(new NoteItemData(this, cursor));
-                } while (cursor.moveToNext());
-            }
-        } finally {
-            cursor.close();
+        for (NoteListItem item : items) {
+            uiItems.add(new NoteItemData(item));
         }
-        return items;
+        return uiItems;
     }
 
-    private ArrayList<FolderOption> buildFolderOptions(Cursor cursor) {
-        ArrayList<FolderOption> folders = new ArrayList<FolderOption>();
-        if (cursor == null) {
-            return folders;
-        }
-        try {
-            if (cursor.moveToFirst()) {
-                do {
-                    long folderId = cursor.getLong(FOLDER_ID_COLUMN);
-                    String folderName = folderId == Notes.ID_ROOT_FOLDER
-                            ? getString(R.string.menu_move_parent_folder)
-                            : cursor.getString(FOLDER_NAME_COLUMN);
-                    folders.add(new FolderOption(folderId, folderName));
-                } while (cursor.moveToNext());
-            }
-        } finally {
-            cursor.close();
-        }
-        return folders;
-    }
-
-    private void showFolderListMenu(final List<FolderOption> folders) {
+    private void showFolderListMenu(final List<FolderDestination> folders) {
         AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
         builder.setTitle(R.string.menu_title_select_folder);
         final String[] names = new String[folders.size()];
         for (int i = 0; i < folders.size(); i++) {
-            names[i] = folders.get(i).name;
+            names[i] = folders.get(i).getName();
         }
         builder.setItems(names, new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
-                DataUtils.batchMoveToFolder(mContentResolver,
-                        mNotesListAdapter.getSelectedItemIds(), folders.get(which).id);
+                mFolderManagementUseCase.moveNotes(mNotesListAdapter.getSelectedItemIds(),
+                        folders.get(which).getId());
                 Toast.makeText(
                         NotesListActivity.this,
                         getString(R.string.format_move_notes_to_folder,
                                 mNotesListAdapter.getSelectedCount(),
-                                folders.get(which).name),
+                                folders.get(which).getName()),
                         Toast.LENGTH_SHORT).show();
                 startAsyncNotesListQuery();
                 mModeCallBack.finishActionMode();
@@ -449,8 +410,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             @Override
             public void run() {
                 final HashSet<AppWidgetAttribute> widgets = mNotesListAdapter.getSelectedWidget();
-                if (!DataUtils.batchDeleteNotes(mContentResolver,
-                        mNotesListAdapter.getSelectedItemIds())) {
+                if (!mDeleteNotesUseCase.delete(mNotesListAdapter.getSelectedItemIds())) {
                     Log.e(TAG, "Delete notes error, should not happens");
                 }
                 mMainHandler.post(new Runnable() {
@@ -477,16 +437,12 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             return;
         }
 
-        HashSet<Long> ids = new HashSet<Long>();
-        ids.add(folderId);
-        HashSet<AppWidgetAttribute> widgets = DataUtils.getFolderNoteWidget(mContentResolver,
-                folderId);
-        DataUtils.batchDeleteNotes(mContentResolver, ids);
+        java.util.Set<WidgetBinding> widgets = mFolderManagementUseCase.deleteFolder(folderId);
         if (widgets != null) {
-            for (AppWidgetAttribute widget : widgets) {
-                if (widget.widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
-                        && widget.widgetType != Notes.TYPE_WIDGET_INVALIDE) {
-                    updateWidget(widget.widgetId, widget.widgetType);
+            for (WidgetBinding widget : widgets) {
+                if (widget.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
+                        && widget.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
+                    updateWidget(widget.getWidgetId(), widget.getWidgetType());
                 }
             }
         }
@@ -574,7 +530,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             public void onClick(View v) {
                 hideSoftInput(etName);
                 String name = etName.getText().toString();
-                if (DataUtils.checkVisibleFolderName(mContentResolver, name)) {
+                if (mFolderManagementUseCase.folderNameExists(name)) {
                     Toast.makeText(NotesListActivity.this, getString(R.string.folder_exist, name),
                             Toast.LENGTH_LONG).show();
                     etName.setSelection(0, etName.length());
@@ -582,21 +538,14 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 }
                 if (!create) {
                     if (!TextUtils.isEmpty(name)) {
-                        ContentValues values = new ContentValues();
-                        values.put(NoteColumns.SNIPPET, name);
-                        values.put(NoteColumns.TYPE, Notes.TYPE_FOLDER);
-                        values.put(NoteColumns.LOCAL_MODIFIED, 1);
-                        mContentResolver.update(Notes.CONTENT_NOTE_URI, values, NoteColumns.ID
-                                + "=?", new String[] {
-                            String.valueOf(mFocusNoteDataItem.getId())
-                        });
-                        updateTopBar(mFocusNoteDataItem);
+                        mFolderManagementUseCase.renameFolder(mFocusNoteDataItem.getId(), name);
+                        if (mFocusNoteDataItem.getId() == mCurrentFolderId) {
+                            mCurrentFolderName = name;
+                            updateTopBar();
+                        }
                     }
                 } else if (!TextUtils.isEmpty(name)) {
-                    ContentValues values = new ContentValues();
-                    values.put(NoteColumns.SNIPPET, name);
-                    values.put(NoteColumns.TYPE, Notes.TYPE_FOLDER);
-                    mContentResolver.insert(Notes.CONTENT_NOTE_URI, values);
+                    mFolderManagementUseCase.createFolder(name);
                 }
                 startAsyncNotesListQuery();
                 dialog.dismiss();
@@ -658,22 +607,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void updateWidget(int appWidgetId, int appWidgetType) {
-        Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-        if (appWidgetType == Notes.TYPE_WIDGET_2X) {
-            intent.setClass(this, NoteWidgetProvider_2x.class);
-        } else if (appWidgetType == Notes.TYPE_WIDGET_4X) {
-            intent.setClass(this, NoteWidgetProvider_4x.class);
-        } else {
-            Log.e(TAG, "Unspported widget type");
-            return;
-        }
-
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[] {
-            appWidgetId
-        });
-
-        sendBroadcast(intent);
-        setResult(RESULT_OK, intent);
+        mWidgetNotifier.refresh(appWidgetId, appWidgetType);
+        setResult(RESULT_OK);
     }
 
     @Override
@@ -726,15 +661,14 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void exportNoteToText() {
-        final BackupUtils backup = BackupUtils.getInstance(NotesListActivity.this);
         mBackgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                final Integer result = backup.exportToText();
+                final ExportedTextFile result = mExportNotesUseCase.exportToText();
                 mMainHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        if (result == BackupUtils.STATE_SD_CARD_UNMOUONTED) {
+                        if (result.getState() == ExportedTextFile.ExportState.STORAGE_UNAVAILABLE) {
                             AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
                             builder.setTitle(NotesListActivity.this
                                     .getString(R.string.failed_sdcard_export));
@@ -742,16 +676,16 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                                     .getString(R.string.error_sdcard_unmounted));
                             builder.setPositiveButton(android.R.string.ok, null);
                             builder.show();
-                        } else if (result == BackupUtils.STATE_SUCCESS) {
+                            } else if (result.getState() == ExportedTextFile.ExportState.SUCCESS) {
                             AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
                             builder.setTitle(NotesListActivity.this
                                     .getString(R.string.success_sdcard_export));
                             builder.setMessage(NotesListActivity.this.getString(
-                                    R.string.format_exported_file_location, backup
-                                            .getExportedTextFileName(), backup.getExportedTextFileDir()));
+                                    R.string.format_exported_file_location,
+                                    result.getFileName(), result.getDirectory()));
                             builder.setPositiveButton(android.R.string.ok, null);
                             builder.show();
-                        } else if (result == BackupUtils.STATE_SYSTEM_ERROR) {
+                            } else {
                             AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
                             builder.setTitle(NotesListActivity.this
                                     .getString(R.string.failed_sdcard_export));
@@ -778,25 +712,12 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void startQueryDestinationFolders() {
-        String selection = NoteColumns.TYPE + "=? AND " + NoteColumns.PARENT_ID + "<>? AND "
-                + NoteColumns.ID + "<>?";
-        selection = (mState == ListEditState.NOTE_LIST) ? selection
-                : "(" + selection + ") OR (" + NoteColumns.ID + "=" + Notes.ID_ROOT_FOLDER + ")";
-
-        final String destinationSelection = selection;
         mBackgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                Cursor cursor = mContentResolver.query(Notes.CONTENT_NOTE_URI,
-                        FOLDER_PROJECTION,
-                        destinationSelection,
-                        new String[] {
-                                String.valueOf(Notes.TYPE_FOLDER),
-                                String.valueOf(Notes.ID_TRASH_FOLER),
-                                String.valueOf(mCurrentFolderId)
-                        },
-                        NoteColumns.MODIFIED_DATE + " DESC");
-                final ArrayList<FolderOption> folders = buildFolderOptions(cursor);
+            final List<FolderDestination> folders = mFolderManagementUseCase
+                .getFolderDestinations(mCurrentFolderId,
+                    mState != ListEditState.NOTE_LIST);
                 mMainHandler.post(new Runnable() {
                     @Override
                     public void run() {

@@ -16,12 +16,9 @@
 
 package net.micode.notes.ui;
 
-import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.PendingIntent;
 import android.app.SearchManager;
 import android.appwidget.AppWidgetManager;
-import android.content.ContentUris;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -60,24 +57,24 @@ import com.google.android.material.appbar.MaterialToolbar;
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.data.Notes.TextNote;
-import net.micode.notes.model.WorkingNote;
-import net.micode.notes.model.WorkingNote.NoteSettingChangedListener;
-import net.micode.notes.tool.DataUtils;
+import net.micode.notes.domain.model.NoteEditorSession;
+import net.micode.notes.domain.service.ReminderScheduler;
+import net.micode.notes.domain.service.WidgetNotifier;
+import net.micode.notes.domain.usecase.editor.DeleteNoteUseCase;
+import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
+import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.tool.ResourceParser.NoteColorResources;
 import net.micode.notes.tool.ResourceParser.TextAppearanceResources;
 import net.micode.notes.ui.DateTimePickerDialog.OnDateTimeSetListener;
 import net.micode.notes.ui.NoteEditText.OnTextViewChangeListener;
-import net.micode.notes.widget.NoteWidgetProvider_2x;
-import net.micode.notes.widget.NoteWidgetProvider_4x;
 
-import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
 public class NoteEditActivity extends AppCompatActivity implements OnClickListener,
-        NoteSettingChangedListener, OnTextViewChangeListener {
+    OnTextViewChangeListener {
     private static final int[] BACKGROUND_IDS = new int[] {
         ResourceParser.YELLOW,
         ResourceParser.BLUE,
@@ -113,7 +110,15 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private View mNoteEditorPanel;
 
-    private WorkingNote mWorkingNote;
+    private NoteEditorSession mNoteSession;
+
+    private StartNoteEditorSessionUseCase mStartNoteEditorSessionUseCase;
+
+    private DeleteNoteUseCase mDeleteNoteUseCase;
+
+    private ReminderScheduler mReminderScheduler;
+
+    private WidgetNotifier mWidgetNotifier;
 
     private SharedPreferences mSharedPrefs;
     private int mFontSizeId;
@@ -140,6 +145,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.setContentView(R.layout.note_edit);
+        initDependencies();
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -152,6 +158,14 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             return;
         }
         initResources();
+    }
+
+    private void initDependencies() {
+        NotesApplicationGraph graph = new NotesApplicationGraph(this);
+        mStartNoteEditorSessionUseCase = graph.startNoteEditorSessionUseCase();
+        mDeleteNoteUseCase = graph.deleteNoteUseCase();
+        mReminderScheduler = graph.reminderScheduler();
+        mWidgetNotifier = graph.widgetNotifier();
     }
 
     /**
@@ -177,7 +191,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
          * If the user specified the {@link Intent#ACTION_VIEW} but not provided with id,
          * then jump to the NotesListActivity
          */
-        mWorkingNote = null;
+        mNoteSession = null;
         if (TextUtils.equals(Intent.ACTION_VIEW, intent.getAction())) {
             long noteId = intent.getLongExtra(Intent.EXTRA_UID, 0);
             mUserQuery = "";
@@ -190,19 +204,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 mUserQuery = intent.getStringExtra(SearchManager.USER_QUERY);
             }
 
-            if (!DataUtils.visibleInNoteDatabase(getContentResolver(), noteId, Notes.TYPE_NOTE)) {
+            mNoteSession = mStartNoteEditorSessionUseCase.openExisting(noteId);
+            if (mNoteSession == null) {
                 Intent jump = new Intent(this, NotesListActivity.class);
                 startActivity(jump);
                 showToast(R.string.error_note_not_exist);
                 finish();
                 return false;
-            } else {
-                mWorkingNote = WorkingNote.load(this, noteId);
-                if (mWorkingNote == null) {
-                    Log.e(TAG, "load note failed with note id" + noteId);
-                    finish();
-                    return false;
-                }
             }
             getWindow().setSoftInputMode(
                     WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
@@ -223,22 +231,10 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 if (TextUtils.isEmpty(phoneNumber)) {
                     Log.w(TAG, "The call record number is null");
                 }
-                long noteId = 0;
-                if ((noteId = DataUtils.getNoteIdByPhoneNumberAndCallDate(getContentResolver(),
-                        phoneNumber, callDate)) > 0) {
-                    mWorkingNote = WorkingNote.load(this, noteId);
-                    if (mWorkingNote == null) {
-                        Log.e(TAG, "load call note failed with note id" + noteId);
-                        finish();
-                        return false;
-                    }
-                } else {
-                    mWorkingNote = WorkingNote.createEmptyNote(this, folderId, widgetId,
-                            widgetType, bgResId);
-                    mWorkingNote.convertToCallNote(phoneNumber, callDate);
-                }
+                mNoteSession = mStartNoteEditorSessionUseCase.startForCallRecord(folderId,
+                        widgetId, widgetType, bgResId, phoneNumber, callDate);
             } else {
-                mWorkingNote = WorkingNote.createEmptyNote(this, folderId, widgetId, widgetType,
+                mNoteSession = mStartNoteEditorSessionUseCase.startNew(folderId, widgetId, widgetType,
                         bgResId);
             }
 
@@ -249,7 +245,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             finish();
             return false;
         }
-        mWorkingNote.setOnSettingStatusChangedListener(this);
         return true;
     }
 
@@ -263,16 +258,16 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         updateScreenHeader();
         mNoteEditor.setTextAppearance(TextAppearanceResources
             .getTexAppearanceResource(mFontSizeId));
-        if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-            switchToListMode(mWorkingNote.getContent());
+        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+            switchToListMode(mNoteSession.getContent());
         } else {
-            mNoteEditor.setText(getHighlightQueryResult(mWorkingNote.getContent(), mUserQuery));
+            mNoteEditor.setText(getHighlightQueryResult(mNoteSession.getContent(), mUserQuery));
             mNoteEditor.setSelection(mNoteEditor.getText().length());
         }
         applyEditorColors();
 
         mNoteHeaderHolder.tvModified.setText(DateUtils.formatDateTime(this,
-                mWorkingNote.getModifiedDate(), DateUtils.FORMAT_SHOW_DATE
+                mNoteSession.getModifiedDate(), DateUtils.FORMAT_SHOW_DATE
                         | DateUtils.FORMAT_NUMERIC_DATE | DateUtils.FORMAT_SHOW_TIME
                         | DateUtils.FORMAT_SHOW_YEAR));
 
@@ -284,13 +279,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void showAlertHeader() {
-        if (mWorkingNote.hasClockAlert()) {
+        if (mNoteSession.hasClockAlert()) {
             long time = System.currentTimeMillis();
-            if (time > mWorkingNote.getAlertDate()) {
+            if (time > mNoteSession.getAlertDate()) {
                 mNoteHeaderHolder.tvAlertDate.setText(R.string.note_alert_expired);
             } else {
                 mNoteHeaderHolder.tvAlertDate.setText(DateUtils.getRelativeTimeSpanString(
-                        mWorkingNote.getAlertDate(), time, DateUtils.MINUTE_IN_MILLIS));
+                        mNoteSession.getAlertDate(), time, DateUtils.MINUTE_IN_MILLIS));
             }
             mNoteHeaderHolder.tvAlertDate.setVisibility(View.VISIBLE);
             mNoteHeaderHolder.ivAlertIcon.setVisibility(View.VISIBLE);
@@ -314,11 +309,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
          * generate a id. If the editing note is not worth saving, there
          * is no id which is equivalent to create new note
          */
-        if (!mWorkingNote.existInDatabase()) {
+        if (!mNoteSession.existsInDatabase()) {
             saveNote();
         }
-        outState.putLong(Intent.EXTRA_UID, mWorkingNote.getNoteId());
-        Log.d(TAG, "Save working note id: " + mWorkingNote.getNoteId() + " onSaveInstanceState");
+        outState.putLong(Intent.EXTRA_UID, mNoteSession.getNoteId());
+        Log.d(TAG, "Save working note id: " + mNoteSession.getNoteId() + " onSaveInstanceState");
     }
 
     private void initResources() {
@@ -356,27 +351,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     protected void onPause() {
         super.onPause();
         if (saveNote()) {
-            Log.d(TAG, "Note data was saved with length:" + mWorkingNote.getContent().length());
+            Log.d(TAG, "Note data was saved with length:" + mNoteSession.getContent().length());
         }
     }
 
     private void updateWidget() {
-        Intent intent = new Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
-        if (mWorkingNote.getWidgetType() == Notes.TYPE_WIDGET_2X) {
-            intent.setClass(this, NoteWidgetProvider_2x.class);
-        } else if (mWorkingNote.getWidgetType() == Notes.TYPE_WIDGET_4X) {
-            intent.setClass(this, NoteWidgetProvider_4x.class);
-        } else {
-            Log.e(TAG, "Unspported widget type");
-            return;
-        }
-
-        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, new int[] {
-            mWorkingNote.getWidgetId()
-        });
-
-        sendBroadcast(intent);
-        setResult(RESULT_OK, intent);
+        mWidgetNotifier.refresh(mNoteSession.getWidgetId(), mNoteSession.getWidgetType());
+        setResult(RESULT_OK);
     }
 
     public void onClick(View v) {
@@ -390,13 +371,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         finish();
     }
 
-    public void onBackgroundColorChanged() {
-        applyEditorColors();
-    }
-
     private void updateScreenHeader() {
         if (mEditorScreenTitle != null) {
-            mEditorScreenTitle.setText(mWorkingNote.existInDatabase()
+            mEditorScreenTitle.setText(mNoteSession.existsInDatabase()
                     ? R.string.notes_editor_existing : R.string.notes_editor_new);
         }
         if (mEditorScreenSubtitle != null) {
@@ -406,9 +383,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private void applyEditorColors() {
         mHeadViewPanel.setBackgroundColor(ContextCompat.getColor(this,
-                NoteColorResources.getNoteEditorHeaderColor(mWorkingNote.getBgColorId())));
+            NoteColorResources.getNoteEditorHeaderColor(mNoteSession.getBgColorId())));
         mNoteEditorPanel.setBackgroundColor(ContextCompat.getColor(this,
-                NoteColorResources.getNoteEditorBackgroundColor(mWorkingNote.getBgColorId())));
+            NoteColorResources.getNoteEditorBackgroundColor(mNoteSession.getBgColorId())));
     }
 
     @Override
@@ -417,17 +394,17 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             return true;
         }
         menu.clear();
-        if (mWorkingNote.getFolderId() == Notes.ID_CALL_RECORD_FOLDER) {
+        if (mNoteSession.getFolderId() == Notes.ID_CALL_RECORD_FOLDER) {
             getMenuInflater().inflate(R.menu.call_note_edit, menu);
         } else {
             getMenuInflater().inflate(R.menu.note_edit, menu);
         }
-        if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             menu.findItem(R.id.menu_list_mode).setTitle(R.string.menu_normal_mode);
         } else {
             menu.findItem(R.id.menu_list_mode).setTitle(R.string.menu_list_mode);
         }
-        if (mWorkingNote.hasClockAlert()) {
+        if (mNoteSession.hasClockAlert()) {
             menu.findItem(R.id.menu_alert).setVisible(false);
         } else {
             menu.findItem(R.id.menu_delete_remind).setVisible(false);
@@ -460,18 +437,21 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 showFontSizePickerDialog();
                 break;
             case R.id.menu_list_mode:
-                mWorkingNote.setCheckListMode(mWorkingNote.getCheckListMode() == 0 ?
-                        TextNote.MODE_CHECK_LIST : 0);
+                int oldMode = mNoteSession.getCheckListMode();
+                int newMode = oldMode == 0 ? TextNote.MODE_CHECK_LIST : 0;
+                mNoteSession.setCheckListMode(newMode);
+                onCheckListModeChanged(oldMode, newMode);
                 break;
             case R.id.menu_share:
                 getWorkingText();
-                sendTo(this, mWorkingNote.getContent());
+                sendTo(this, mNoteSession.getContent());
                 break;
             case R.id.menu_alert:
                 setReminder();
                 break;
             case R.id.menu_delete_remind:
-                mWorkingNote.setAlertDate(0, false);
+                mNoteSession.setAlertDate(0, false);
+                applyReminderChange(0, false);
                 break;
             default:
                 break;
@@ -493,7 +473,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                mWorkingNote.setBgColorId(BACKGROUND_IDS[which]);
+                                mNoteSession.setBgColorId(BACKGROUND_IDS[which]);
+                                applyEditorColors();
                                 dialog.dismiss();
                             }
                         })
@@ -524,7 +505,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private int getBackgroundSelectionIndex() {
         for (int i = 0; i < BACKGROUND_IDS.length; i++) {
-            if (BACKGROUND_IDS[i] == mWorkingNote.getBgColorId()) {
+            if (BACKGROUND_IDS[i] == mNoteSession.getBgColorId()) {
                 return i;
             }
         }
@@ -543,9 +524,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private void applyFontSize(int fontSizeId) {
         mFontSizeId = fontSizeId;
         mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
-        if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             getWorkingText();
-            switchToListMode(mWorkingNote.getContent());
+            switchToListMode(mNoteSession.getContent());
         } else {
             mNoteEditor.setTextAppearance(
                     TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
@@ -556,7 +537,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         DateTimePickerDialog d = new DateTimePickerDialog(this, System.currentTimeMillis());
         d.setOnDateTimeSetListener(new OnDateTimeSetListener() {
             public void OnDateTimeSet(AlertDialog dialog, long date) {
-                mWorkingNote.setAlertDate(date	, true);
+                mNoteSession.setAlertDate(date, true);
+                applyReminderChange(date, true);
             }
         });
         d.show();
@@ -581,47 +563,35 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         finish();
         Intent intent = new Intent(this, NoteEditActivity.class);
         intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
-        intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, mWorkingNote.getFolderId());
+        intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, mNoteSession.getFolderId());
         startActivity(intent);
     }
 
     private void deleteCurrentNote() {
-        if (mWorkingNote.existInDatabase()) {
-            HashSet<Long> ids = new HashSet<Long>();
-            long id = mWorkingNote.getNoteId();
-            if (id != Notes.ID_ROOT_FOLDER) {
-                ids.add(id);
-            } else {
-                Log.d(TAG, "Wrong note id, should not happen");
-            }
-            if (!DataUtils.batchDeleteNotes(getContentResolver(), ids)) {
+        if (mNoteSession.existsInDatabase()) {
+            long id = mNoteSession.getNoteId();
+            if (!mDeleteNoteUseCase.delete(id)) {
                 Log.e(TAG, "Delete Note error");
             }
         }
-        mWorkingNote.markDeleted(true);
+        mNoteSession.markDeleted(true);
+        if (mNoteSession.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
+                && mNoteSession.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
+            updateWidget();
+        }
     }
 
-    public void onClockAlertChanged(long date, boolean set) {
+    private void applyReminderChange(long date, boolean set) {
         /**
          * User could set clock to an unsaved note, so before setting the
          * alert clock, we should save the note first
          */
-        if (!mWorkingNote.existInDatabase()) {
+        if (!mNoteSession.existsInDatabase()) {
             saveNote();
         }
-        if (mWorkingNote.getNoteId() > 0) {
-            Intent intent = new Intent(this, AlarmReceiver.class);
-            intent.setData(ContentUris.withAppendedId(Notes.CONTENT_NOTE_URI, mWorkingNote.getNoteId()));
-            PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-            AlarmManager alarmManager = ((AlarmManager) getSystemService(ALARM_SERVICE));
+        if (mNoteSession.getNoteId() > 0) {
+            mReminderScheduler.updateReminder(mNoteSession.getNoteId(), date, set);
             showAlertHeader();
-            if(!set) {
-                alarmManager.cancel(pendingIntent);
-            } else {
-                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, date,
-                        pendingIntent);
-            }
         } else {
             /**
              * There is the condition that user has input nothing (the note is
@@ -631,10 +601,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             Log.e(TAG, "Clock alert setting error");
             showToast(R.string.error_note_empty_for_clock);
         }
-    }
-
-    public void onWidgetChanged() {
-        updateWidget();
     }
 
     public void onEditTextDelete(int index, String text) {
@@ -764,10 +730,10 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             switchToListMode(mNoteEditor.getText().toString());
         } else {
             if (!getWorkingText()) {
-                mWorkingNote.setWorkingText(mWorkingNote.getContent().replace(TAG_UNCHECKED + " ",
+                mNoteSession.setWorkingText(mNoteSession.getContent().replace(TAG_UNCHECKED + " ",
                         ""));
             }
-            mNoteEditor.setText(getHighlightQueryResult(mWorkingNote.getContent(), mUserQuery));
+            mNoteEditor.setText(getHighlightQueryResult(mNoteSession.getContent(), mUserQuery));
             mEditTextList.setVisibility(View.GONE);
             mNoteEditor.setVisibility(View.VISIBLE);
         }
@@ -775,7 +741,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private boolean getWorkingText() {
         boolean hasChecked = false;
-        if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < mEditTextList.getChildCount(); i++) {
                 View view = mEditTextList.getChildAt(i);
@@ -789,17 +755,21 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                     }
                 }
             }
-            mWorkingNote.setWorkingText(sb.toString());
+            mNoteSession.setWorkingText(sb.toString());
         } else {
-            mWorkingNote.setWorkingText(mNoteEditor.getText().toString());
+            mNoteSession.setWorkingText(mNoteEditor.getText().toString());
         }
         return hasChecked;
     }
 
     private boolean saveNote() {
         getWorkingText();
-        boolean saved = mWorkingNote.saveNote();
+        boolean saved = mNoteSession.save();
         if (saved) {
+            if (mNoteSession.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
+                    && mNoteSession.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
+                updateWidget();
+            }
             /**
              * There are two modes from List view to edit view, open one note,
              * create/edit a node. Opening node requires to the original

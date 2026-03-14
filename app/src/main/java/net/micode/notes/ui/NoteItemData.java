@@ -16,45 +16,13 @@
 
 package net.micode.notes.ui;
 
-import android.content.Context;
-import android.database.Cursor;
 import android.text.TextUtils;
 
-import net.micode.notes.data.Contact;
 import net.micode.notes.data.Notes;
-import net.micode.notes.data.Notes.NoteColumns;
-import net.micode.notes.tool.DataUtils;
+import net.micode.notes.domain.model.NoteListItem;
 
 
 public class NoteItemData {
-    static final String [] PROJECTION = new String [] {
-        NoteColumns.ID,
-        NoteColumns.ALERTED_DATE,
-        NoteColumns.BG_COLOR_ID,
-        NoteColumns.CREATED_DATE,
-        NoteColumns.HAS_ATTACHMENT,
-        NoteColumns.MODIFIED_DATE,
-        NoteColumns.NOTES_COUNT,
-        NoteColumns.PARENT_ID,
-        NoteColumns.SNIPPET,
-        NoteColumns.TYPE,
-        NoteColumns.WIDGET_ID,
-        NoteColumns.WIDGET_TYPE,
-    };
-
-    private static final int ID_COLUMN                    = 0;
-    private static final int ALERTED_DATE_COLUMN          = 1;
-    private static final int BG_COLOR_ID_COLUMN           = 2;
-    private static final int CREATED_DATE_COLUMN          = 3;
-    private static final int HAS_ATTACHMENT_COLUMN        = 4;
-    private static final int MODIFIED_DATE_COLUMN         = 5;
-    private static final int NOTES_COUNT_COLUMN           = 6;
-    private static final int PARENT_ID_COLUMN             = 7;
-    private static final int SNIPPET_COLUMN               = 8;
-    private static final int TYPE_COLUMN                  = 9;
-    private static final int WIDGET_ID_COLUMN             = 10;
-    private static final int WIDGET_TYPE_COLUMN           = 11;
-
     private long mId;
     private long mAlertDate;
     private int mBgColorId;
@@ -70,36 +38,21 @@ public class NoteItemData {
     private String mName;
     private String mPhoneNumber;
 
-    public NoteItemData(Context context, Cursor cursor) {
-        mId = cursor.getLong(ID_COLUMN);
-        mAlertDate = cursor.getLong(ALERTED_DATE_COLUMN);
-        mBgColorId = cursor.getInt(BG_COLOR_ID_COLUMN);
-        mCreatedDate = cursor.getLong(CREATED_DATE_COLUMN);
-        mHasAttachment = (cursor.getInt(HAS_ATTACHMENT_COLUMN) > 0) ? true : false;
-        mModifiedDate = cursor.getLong(MODIFIED_DATE_COLUMN);
-        mNotesCount = cursor.getInt(NOTES_COUNT_COLUMN);
-        mParentId = cursor.getLong(PARENT_ID_COLUMN);
-        mSnippet = cursor.getString(SNIPPET_COLUMN);
-        mSnippet = mSnippet.replace(NoteEditActivity.TAG_CHECKED, "").replace(
-                NoteEditActivity.TAG_UNCHECKED, "");
-        mType = cursor.getInt(TYPE_COLUMN);
-        mWidgetId = cursor.getInt(WIDGET_ID_COLUMN);
-        mWidgetType = cursor.getInt(WIDGET_TYPE_COLUMN);
-
-        mPhoneNumber = "";
-        if (mParentId == Notes.ID_CALL_RECORD_FOLDER) {
-            mPhoneNumber = DataUtils.getCallNumberByNoteId(context.getContentResolver(), mId);
-            if (!TextUtils.isEmpty(mPhoneNumber)) {
-                mName = Contact.getContact(context, mPhoneNumber);
-                if (mName == null) {
-                    mName = mPhoneNumber;
-                }
-            }
-        }
-
-        if (mName == null) {
-            mName = "";
-        }
+    public NoteItemData(NoteListItem item) {
+        mId = item.getId();
+        mAlertDate = item.getAlertDate();
+        mBgColorId = item.getBgColorId();
+        mCreatedDate = item.getCreatedDate();
+        mHasAttachment = item.hasAttachment();
+        mModifiedDate = item.getModifiedDate();
+        mNotesCount = item.getNotesCount();
+        mParentId = item.getParentId();
+        mSnippet = item.getSnippet();
+        mType = item.getType();
+        mWidgetId = item.getWidgetId();
+        mWidgetType = item.getWidgetType();
+        mName = item.getCallName();
+        mPhoneNumber = item.getPhoneNumber();
     }
 
     public String getCallName() {
@@ -164,9 +117,5 @@ public class NoteItemData {
 
     public boolean isCallRecord() {
         return (mParentId == Notes.ID_CALL_RECORD_FOLDER && !TextUtils.isEmpty(mPhoneNumber));
-    }
-
-    public static int getNoteType(Cursor cursor) {
-        return cursor.getInt(TYPE_COLUMN);
     }
 }
