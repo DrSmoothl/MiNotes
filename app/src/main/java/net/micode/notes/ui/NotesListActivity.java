@@ -30,7 +30,6 @@ import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -38,7 +37,6 @@ import android.util.Log;
 import android.view.ActionMode;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
-import android.view.Display;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -62,8 +60,10 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
@@ -155,6 +155,12 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.note_list);
         initResources();
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackNavigation();
+            }
+        });
 
         /**
          * Insert an introduction when user firstly use this application
@@ -356,8 +362,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         public boolean onTouch(View v, MotionEvent event) {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN: {
-                    Display display = getWindowManager().getDefaultDisplay();
-                    int screenHeight = display.getHeight();
+                    int screenHeight = getResources().getDisplayMetrics().heightPixels;
                     int newNoteViewHeight = mAddNewNote.getHeight();
                     int start = screenHeight - newNoteViewHeight;
                     int eventY = start + (int) event.getY();
@@ -556,10 +561,11 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
     }
 
-    private void showSoftInput() {
+    private void showSoftInput(View view) {
         InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (inputMethodManager != null) {
-            inputMethodManager.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
+            view.requestFocus();
+            inputMethodManager.showSoftInput(view, InputMethodManager.SHOW_IMPLICIT);
         }
     }
 
@@ -572,7 +578,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_text, null);
         final EditText etName = (EditText) view.findViewById(R.id.et_foler_name);
-        showSoftInput();
+        showSoftInput(etName);
         if (!create) {
             if (mFocusNoteDataItem != null) {
                 etName.setText(mFocusNoteDataItem.getSnippet());
@@ -653,8 +659,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         });
     }
 
-    @Override
-    public void onBackPressed() {
+    private void handleBackNavigation() {
         switch (mState) {
             case SUB_FOLDER:
                 mCurrentFolderId = Notes.ID_ROOT_FOLDER;
@@ -670,7 +675,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 startAsyncNotesListQuery();
                 break;
             case NOTE_LIST:
-                super.onBackPressed();
+                finish();
                 break;
             default:
                 break;
@@ -846,9 +851,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void startPreferenceActivity() {
-        Activity from = getParent() != null ? getParent() : this;
-        Intent intent = new Intent(from, NotesPreferenceActivity.class);
-        from.startActivityIfNeeded(intent, -1);
+        Intent intent = new Intent(this, NotesPreferenceActivity.class);
+        startActivity(intent);
     }
 
     private class OnListItemClickListener implements OnItemClickListener {

@@ -24,6 +24,7 @@ import android.content.DialogInterface.OnClickListener;
 import android.content.DialogInterface.OnDismissListener;
 import android.content.Intent;
 import android.media.AudioManager;
+import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -52,13 +53,12 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         final Window win = getWindow();
-        win.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+        setShowWhenLocked(true);
 
         if (!isScreenOn()) {
+            setTurnScreenOn(true);
             win.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                    | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                    | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON
-                    | WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR);
+                | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
         }
 
         Intent intent = getIntent();
@@ -85,20 +85,19 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
 
     private boolean isScreenOn() {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-        return pm.isScreenOn();
+        return pm != null && pm.isInteractive();
     }
 
     private void playAlarmSound() {
         Uri url = RingtoneManager.getActualDefaultRingtoneUri(this, RingtoneManager.TYPE_ALARM);
 
         int silentModeStreams = Settings.System.getInt(getContentResolver(),
-                Settings.System.MODE_RINGER_STREAMS_AFFECTED, 0);
-
-        if ((silentModeStreams & (1 << AudioManager.STREAM_ALARM)) != 0) {
-            mPlayer.setAudioStreamType(silentModeStreams);
-        } else {
-            mPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
-        }
+            Settings.System.MODE_RINGER_STREAMS_AFFECTED, 0);
+        AudioAttributes attributes = new AudioAttributes.Builder()
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .build();
+        mPlayer.setAudioAttributes(attributes);
         try {
             mPlayer.setDataSource(this, url);
             mPlayer.prepare();

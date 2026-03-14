@@ -44,7 +44,7 @@ public class NotesListAdapter extends CursorAdapter {
     };
 
     public NotesListAdapter(Context context) {
-        super(context, null);
+        super(context, null, 0);
         mSelectedIndex = new HashMap<Integer, Boolean>();
         mContext = context;
         mNotesCount = 0;

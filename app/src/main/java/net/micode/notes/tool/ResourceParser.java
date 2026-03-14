@@ -17,7 +17,8 @@
 package net.micode.notes.tool;
 
 import android.content.Context;
-import android.preference.PreferenceManager;
+
+import androidx.preference.PreferenceManager;
 
 import net.micode.notes.R;
 import net.micode.notes.ui.NotesPreferenceActivity;

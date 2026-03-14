@@ -39,7 +39,7 @@ public class FoldersListAdapter extends CursorAdapter {
     public static final int NAME_COLUMN = 1;
 
     public FoldersListAdapter(Context context, Cursor c) {
-        super(context, c);
+        super(context, c, 0);
         // TODO Auto-generated constructor stub
     }
 

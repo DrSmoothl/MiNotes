@@ -31,6 +31,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-Xlint:deprecation")
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -41,5 +45,6 @@ android {
 dependencies {
     implementation("androidx.core:core:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.preference:preference:1.2.1")
     implementation("com.google.android.material:material:1.12.0")
 }

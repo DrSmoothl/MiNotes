@@ -16,7 +16,6 @@
 
 package net.micode.notes.ui;
 
-import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
 import android.app.PendingIntent;
@@ -29,7 +28,6 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Paint;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.TextUtils;
@@ -52,7 +50,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.ComponentActivity;
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
@@ -74,7 +75,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class NoteEditActivity extends Activity implements OnClickListener,
+public class NoteEditActivity extends ComponentActivity implements OnClickListener,
         NoteSettingChangedListener, OnTextViewChangeListener {
     private class HeadViewHolder {
         public TextView tvModified;
@@ -155,6 +156,12 @@ public class NoteEditActivity extends Activity implements OnClickListener,
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         this.setContentView(R.layout.note_edit);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                handleBackNavigation();
+            }
+        });
 
         if (savedInstanceState == null && !initActivityState(getIntent())) {
             finish();
@@ -214,8 +221,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
                 }
             }
             getWindow().setSoftInputMode(
-                    WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN
-                            | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+                    WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
         } else if(TextUtils.equals(Intent.ACTION_INSERT_OR_EDIT, intent.getAction())) {
             // New note
             long folderId = intent.getLongExtra(Notes.INTENT_EXTRA_FOLDER_ID, 0);
@@ -253,8 +259,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
             }
 
             getWindow().setSoftInputMode(
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-                            | WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+            WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
         } else {
             Log.e(TAG, "Intent not specified action, should not support");
             finish();
@@ -271,8 +276,8 @@ public class NoteEditActivity extends Activity implements OnClickListener,
     }
 
     private void initNoteScreen() {
-        mNoteEditor.setTextAppearance(this, TextAppearanceResources
-                .getTexAppearanceResource(mFontSizeId));
+        mNoteEditor.setTextAppearance(TextAppearanceResources
+            .getTexAppearanceResource(mFontSizeId));
         if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             switchToListMode(mWorkingNote.getContent());
         } else {
@@ -447,21 +452,20 @@ public class NoteEditActivity extends Activity implements OnClickListener,
                 getWorkingText();
                 switchToListMode(mWorkingNote.getContent());
             } else {
-                mNoteEditor.setTextAppearance(this,
-                        TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
+                mNoteEditor.setTextAppearance(
+                    TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
             }
             mFontSizeSelector.setVisibility(View.GONE);
         }
     }
 
-    @Override
-    public void onBackPressed() {
+    private void handleBackNavigation() {
         if(clearSettingState()) {
             return;
         }
 
         saveNote();
-        super.onBackPressed();
+        finish();
     }
 
     private boolean clearSettingState() {
@@ -719,7 +723,7 @@ public class NoteEditActivity extends Activity implements OnClickListener,
     private View getListItem(String item, int index) {
         View view = LayoutInflater.from(this).inflate(R.layout.note_edit_list_item, null);
         final NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
-        edit.setTextAppearance(this, TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
+        edit.setTextAppearance(TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
         CheckBox cb = ((CheckBox) view.findViewById(R.id.cb_edit_item));
         cb.setOnCheckedChangeListener(new OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {

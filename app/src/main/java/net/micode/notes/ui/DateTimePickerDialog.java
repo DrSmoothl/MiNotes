@@ -58,8 +58,9 @@ public class DateTimePickerDialog extends AlertDialog implements OnClickListener
         mDate.setTimeInMillis(date);
         mDate.set(Calendar.SECOND, 0);
         mDateTimePicker.setCurrentDate(mDate.getTimeInMillis());
-        setButton(context.getString(R.string.datetime_dialog_ok), this);
-        setButton2(context.getString(R.string.datetime_dialog_cancel), (OnClickListener)null);
+        setButton(BUTTON_POSITIVE, context.getString(R.string.datetime_dialog_ok), this);
+        setButton(BUTTON_NEGATIVE, context.getString(R.string.datetime_dialog_cancel),
+            (OnClickListener) null);
         set24HourView(DateFormat.is24HourFormat(this.getContext()));
         updateTitle(mDate.getTimeInMillis());
     }
@@ -77,7 +78,6 @@ public class DateTimePickerDialog extends AlertDialog implements OnClickListener
             DateUtils.FORMAT_SHOW_YEAR |
             DateUtils.FORMAT_SHOW_DATE |
             DateUtils.FORMAT_SHOW_TIME;
-        flag |= mIs24HourView ? DateUtils.FORMAT_24HOUR : DateUtils.FORMAT_24HOUR;
         setTitle(DateUtils.formatDateTime(this.getContext(), date, flag));
     }
 
