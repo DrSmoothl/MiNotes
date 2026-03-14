@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- Copyright (c) 2010-2011, The MiCode Open Source Community (www.micode.net)
+
+     Licensed under the Apache License, Version 2.0 (the "License");
+     you may not use this file except in compliance with the License.
+     You may obtain a copy of the License at
+
+          http://www.apache.org/licenses/LICENSE-2.0
+
+     Unless required by applicable law or agreed to in writing, software
+     distributed under the License is distributed on an "AS IS" BASIS,
+     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+     See the License for the specific language governing permissions and
+     limitations under the License.
+-->
+
+<resources>
+     <color name="notes_primary">#7A4B2A</color>
+     <color name="notes_on_primary">#FFFFFF</color>
+     <color name="notes_primary_container">#F6E1D2</color>
+     <color name="notes_on_primary_container">#2F1605</color>
+     <color name="notes_surface">#FFF8F3</color>
+     <color name="notes_surface_container">#F2E6DC</color>
+     <color name="notes_on_surface">#241A14</color>
+    <color name="user_query_highlight">#335b5b5b</color>
+</resources>
