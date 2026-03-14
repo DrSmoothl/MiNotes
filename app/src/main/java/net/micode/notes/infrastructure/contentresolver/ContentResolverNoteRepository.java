@@ -13,6 +13,7 @@ import android.util.Log;
 import net.micode.notes.data.Notes;
 import net.micode.notes.data.Notes.CallNote;
 import net.micode.notes.data.Notes.NoteColumns;
+import net.micode.notes.domain.model.CheckListText;
 import net.micode.notes.domain.model.FolderDestination;
 import net.micode.notes.domain.model.NoteListItem;
 import net.micode.notes.domain.model.ScheduledReminder;
@@ -382,8 +383,7 @@ public final class ContentResolverNoteRepository implements NoteRepository {
         if (snippet == null) {
             return "";
         }
-        return snippet.replace(net.micode.notes.ui.NoteEditActivity.TAG_CHECKED, "")
-                .replace(net.micode.notes.ui.NoteEditActivity.TAG_UNCHECKED, "");
+        return CheckListText.stripMarkers(snippet);
     }
 
     private String getCallNumberByNoteId(long noteId) {

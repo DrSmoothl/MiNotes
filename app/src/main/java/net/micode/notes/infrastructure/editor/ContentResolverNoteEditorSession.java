@@ -293,15 +293,7 @@ public final class ContentResolverNoteEditorSession implements NoteEditorSession
         values.putAll(noteDiffValues);
         Uri uri = contentResolver.insert(Notes.CONTENT_NOTE_URI, values);
         noteDiffValues.clear();
-        if (uri == null || uri.getPathSegments().size() < 2) {
-            return 0;
-        }
-        try {
-            return Long.parseLong(uri.getPathSegments().get(1));
-        } catch (NumberFormatException exception) {
-            Log.e(TAG, "Failed to parse note id", exception);
-            return 0;
-        }
+        return parseInsertedId(uri, "note id");
     }
 
     private boolean persistNoteValues() {
@@ -326,16 +318,11 @@ public final class ContentResolverNoteEditorSession implements NoteEditorSession
             if (textDataId == 0) {
                 textDataValues.put(DataColumns.MIME_TYPE, TextNote.CONTENT_ITEM_TYPE);
                 Uri uri = contentResolver.insert(Notes.CONTENT_DATA_URI, textDataValues);
-                if (uri == null || uri.getPathSegments().size() < 2) {
+                textDataId = parseInsertedId(uri, "text data id");
+                if (textDataId == 0) {
                     return false;
                 }
                 inserted = true;
-                try {
-                    textDataId = Long.parseLong(uri.getPathSegments().get(1));
-                } catch (NumberFormatException exception) {
-                    Log.e(TAG, "Failed to parse text data id", exception);
-                    return false;
-                }
             } else {
                 ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate(
                         ContentUris.withAppendedId(Notes.CONTENT_DATA_URI, textDataId));
@@ -350,16 +337,11 @@ public final class ContentResolverNoteEditorSession implements NoteEditorSession
             if (callDataId == 0) {
                 callDataValues.put(DataColumns.MIME_TYPE, CallNote.CONTENT_ITEM_TYPE);
                 Uri uri = contentResolver.insert(Notes.CONTENT_DATA_URI, callDataValues);
-                if (uri == null || uri.getPathSegments().size() < 2) {
+                callDataId = parseInsertedId(uri, "call data id");
+                if (callDataId == 0) {
                     return false;
                 }
                 inserted = true;
-                try {
-                    callDataId = Long.parseLong(uri.getPathSegments().get(1));
-                } catch (NumberFormatException exception) {
-                    Log.e(TAG, "Failed to parse call data id", exception);
-                    return false;
-                }
             } else {
                 ContentProviderOperation.Builder builder = ContentProviderOperation.newUpdate(
                         ContentUris.withAppendedId(Notes.CONTENT_DATA_URI, callDataId));
@@ -386,22 +368,32 @@ public final class ContentResolverNoteEditorSession implements NoteEditorSession
 
     private void setNoteValue(String key, String value) {
         noteDiffValues.put(key, value);
-        long now = System.currentTimeMillis();
-        noteDiffValues.put(NoteColumns.LOCAL_MODIFIED, 1);
-        noteDiffValues.put(NoteColumns.MODIFIED_DATE, now);
-        modifiedDate = now;
+        markModified();
     }
 
     private void setTextData(String key, String value) {
         textDataValues.put(key, value);
-        long now = System.currentTimeMillis();
-        noteDiffValues.put(NoteColumns.LOCAL_MODIFIED, 1);
-        noteDiffValues.put(NoteColumns.MODIFIED_DATE, now);
-        modifiedDate = now;
+        markModified();
     }
 
     private void setCallData(String key, String value) {
         callDataValues.put(key, value);
+        markModified();
+    }
+
+    private long parseInsertedId(Uri uri, String label) {
+        if (uri == null || uri.getPathSegments().size() < 2) {
+            return 0;
+        }
+        try {
+            return Long.parseLong(uri.getPathSegments().get(1));
+        } catch (NumberFormatException exception) {
+            Log.e(TAG, "Failed to parse " + label, exception);
+            return 0;
+        }
+    }
+
+    private void markModified() {
         long now = System.currentTimeMillis();
         noteDiffValues.put(NoteColumns.LOCAL_MODIFIED, 1);
         noteDiffValues.put(NoteColumns.MODIFIED_DATE, now);

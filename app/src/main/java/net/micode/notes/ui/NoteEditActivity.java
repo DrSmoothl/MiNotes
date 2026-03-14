@@ -58,9 +58,8 @@ import com.google.android.material.appbar.MaterialToolbar;
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.data.Notes.TextNote;
+import net.micode.notes.domain.model.CheckListText;
 import net.micode.notes.domain.model.NoteEditorSession;
-import net.micode.notes.domain.service.ReminderScheduler;
-import net.micode.notes.domain.service.WidgetNotifier;
 import net.micode.notes.domain.usecase.editor.DeleteNoteUseCase;
 import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
 import net.micode.notes.inject.NotesApplicationGraph;
@@ -115,19 +114,12 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private NoteEditViewModel mNoteEditViewModel;
 
-    private ReminderScheduler mReminderScheduler;
-
-    private WidgetNotifier mWidgetNotifier;
-
     private SharedPreferences mSharedPrefs;
     private int mFontSizeId;
 
     private static final String PREFERENCE_FONT_SIZE = "pref_font_size";
 
     private static final int SHORTCUT_ICON_TITLE_MAX_LEN = 10;
-
-    public static final String TAG_CHECKED = String.valueOf('\u221A');
-    public static final String TAG_UNCHECKED = String.valueOf('\u25A1');
 
     private LinearLayout mEditTextList;
 
@@ -139,6 +131,16 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private String mUserQuery;
     private Pattern mPattern;
+
+    private static final class EditorContentSnapshot {
+        private final String text;
+        private final boolean hasCheckedItems;
+
+        private EditorContentSnapshot(String text, boolean hasCheckedItems) {
+            this.text = text;
+            this.hasCheckedItems = hasCheckedItems;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -164,10 +166,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         StartNoteEditorSessionUseCase startNoteEditorSessionUseCase =
             graph.startNoteEditorSessionUseCase();
         DeleteNoteUseCase deleteNoteUseCase = graph.deleteNoteUseCase();
-        mReminderScheduler = graph.reminderScheduler();
-        mWidgetNotifier = graph.widgetNotifier();
         mNoteEditViewModel = new ViewModelProvider(this,
-            new NoteEditViewModel.Factory(startNoteEditorSessionUseCase, deleteNoteUseCase))
+            new NoteEditViewModel.Factory(startNoteEditorSessionUseCase, deleteNoteUseCase,
+                    graph.reminderScheduler(), graph.widgetNotifier()))
                 .get(NoteEditViewModel.class);
     }
 
@@ -270,6 +271,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (mNoteSession == null || state == null) {
             return;
         }
+        renderEditorContent(state);
+        renderViewState(state);
+    }
+
+    private void renderEditorContent(NoteEditViewState state) {
         mNoteEditor.setTextAppearance(TextAppearanceResources
             .getTexAppearanceResource(mFontSizeId));
         if (state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
@@ -277,8 +283,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         } else {
             mNoteEditor.setText(getHighlightQueryResult(mNoteSession.getContent(), mUserQuery));
             mNoteEditor.setSelection(mNoteEditor.getText().length());
+            mEditTextList.setVisibility(View.GONE);
+            mNoteEditor.setVisibility(View.VISIBLE);
         }
-        renderViewState(state);
     }
 
     private void showAlertHeader(NoteEditViewState state) {
@@ -360,11 +367,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
     }
 
-    private void updateWidget() {
-        mWidgetNotifier.refresh(mNoteSession.getWidgetId(), mNoteSession.getWidgetType());
-        setResult(RESULT_OK);
-    }
-
     public void onClick(View v) {
         if (v.getId() == R.id.btn_set_bg_color) {
             showBackgroundPickerDialog();
@@ -438,21 +440,27 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             case R.id.menu_list_mode:
                 int oldMode = mNoteSession.getCheckListMode();
                 int newMode = oldMode == 0 ? TextNote.MODE_CHECK_LIST : 0;
-                mNoteEditViewModel.setCheckListMode(newMode);
+                EditorContentSnapshot modeSnapshot = collectWorkingText();
+                mNoteEditViewModel.changeCheckListMode(modeSnapshot.text,
+                        modeSnapshot.hasCheckedItems, newMode);
                 syncSessionFromViewModel();
-                onCheckListModeChanged(oldMode, newMode);
+                renderEditorContent(mNoteEditViewModel.getCurrentState());
                 break;
             case R.id.menu_share:
-                getWorkingText();
+                EditorContentSnapshot shareSnapshot = collectWorkingText();
+                mNoteEditViewModel.updateWorkingText(shareSnapshot.text);
+                syncSessionFromViewModel();
                 sendTo(this, mNoteSession.getContent());
                 break;
             case R.id.menu_alert:
                 setReminder();
                 break;
             case R.id.menu_delete_remind:
-                mNoteEditViewModel.setAlertDate(0, false);
+                EditorContentSnapshot clearReminderSnapshot = collectWorkingText();
+                if (!mNoteEditViewModel.applyReminder(clearReminderSnapshot.text, 0, false)) {
+                    showToast(R.string.error_note_empty_for_clock);
+                }
                 syncSessionFromViewModel();
-                applyReminderChange(0, false);
                 break;
             default:
                 break;
@@ -526,8 +534,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         mFontSizeId = fontSizeId;
         mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
         if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-            getWorkingText();
-            switchToListMode(mNoteSession.getContent());
+            EditorContentSnapshot contentSnapshot = collectWorkingText();
+            switchToListMode(contentSnapshot.text);
         } else {
             mNoteEditor.setTextAppearance(
                     TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
@@ -538,9 +546,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         DateTimePickerDialog d = new DateTimePickerDialog(this, System.currentTimeMillis());
         d.setOnDateTimeSetListener(new OnDateTimeSetListener() {
             public void OnDateTimeSet(AlertDialog dialog, long date) {
-                mNoteEditViewModel.setAlertDate(date, true);
+                EditorContentSnapshot reminderSnapshot = collectWorkingText();
+                if (!mNoteEditViewModel.applyReminder(reminderSnapshot.text, date, true)) {
+                    showToast(R.string.error_note_empty_for_clock);
+                }
                 syncSessionFromViewModel();
-                applyReminderChange(date, true);
             }
         });
         d.show();
@@ -574,32 +584,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             Log.e(TAG, "Delete Note error");
         }
         syncSessionFromViewModel();
-        if (mNoteSession.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
-                && mNoteSession.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
-            updateWidget();
-        }
-    }
-
-    private void applyReminderChange(long date, boolean set) {
-        /**
-         * User could set clock to an unsaved note, so before setting the
-         * alert clock, we should save the note first
-         */
-        if (!mNoteSession.existsInDatabase()) {
-            saveNote();
-        }
-        if (mNoteSession.getNoteId() > 0) {
-            mReminderScheduler.updateReminder(mNoteSession.getNoteId(), date, set);
-            mNoteEditViewModel.refreshState();
-        } else {
-            /**
-             * There is the condition that user has input nothing (the note is
-             * not worthy saving), we have no note id, remind the user that he
-             * should input something
-             */
-            Log.e(TAG, "Clock alert setting error");
-            showToast(R.string.error_note_empty_for_clock);
-        }
     }
 
     public void onEditTextDelete(int index, String text) {
@@ -696,14 +680,14 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             }
         });
 
-        if (item.startsWith(TAG_CHECKED)) {
+        if (item.startsWith(CheckListText.CHECKED_PREFIX)) {
             cb.setChecked(true);
             edit.setPaintFlags(edit.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
-            item = item.substring(TAG_CHECKED.length(), item.length()).trim();
-        } else if (item.startsWith(TAG_UNCHECKED)) {
+            item = item.substring(CheckListText.CHECKED_PREFIX.length(), item.length()).trim();
+        } else if (item.startsWith(CheckListText.UNCHECKED_PREFIX)) {
             cb.setChecked(false);
             edit.setPaintFlags(Paint.ANTI_ALIAS_FLAG | Paint.DEV_KERN_TEXT_FLAG);
-            item = item.substring(TAG_UNCHECKED.length(), item.length()).trim();
+            item = item.substring(CheckListText.UNCHECKED_PREFIX.length(), item.length()).trim();
         }
 
         edit.setOnTextViewChangeListener(this);
@@ -724,22 +708,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
     }
 
-    public void onCheckListModeChanged(int oldMode, int newMode) {
-        if (newMode == TextNote.MODE_CHECK_LIST) {
-            switchToListMode(mNoteEditor.getText().toString());
-        } else {
-            if (!getWorkingText()) {
-                mNoteSession.setWorkingText(mNoteSession.getContent().replace(TAG_UNCHECKED + " ",
-                        ""));
-            }
-            mNoteEditor.setText(getHighlightQueryResult(mNoteSession.getContent(), mUserQuery));
-            mEditTextList.setVisibility(View.GONE);
-            mNoteEditor.setVisibility(View.VISIBLE);
-        }
-    }
-
-    private boolean getWorkingText() {
-        boolean hasChecked = false;
+    private EditorContentSnapshot collectWorkingText() {
+        boolean hasCheckedItems = false;
         if (mNoteSession.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < mEditTextList.getChildCount(); i++) {
@@ -747,29 +717,25 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
                 if (!TextUtils.isEmpty(edit.getText())) {
                     if (((CheckBox) view.findViewById(R.id.cb_edit_item)).isChecked()) {
-                        sb.append(TAG_CHECKED).append(" ").append(edit.getText()).append("\n");
-                        hasChecked = true;
+                        sb.append(CheckListText.CHECKED_PREFIX).append(" ")
+                                .append(edit.getText()).append("\n");
+                        hasCheckedItems = true;
                     } else {
-                        sb.append(TAG_UNCHECKED).append(" ").append(edit.getText()).append("\n");
+                        sb.append(CheckListText.UNCHECKED_PREFIX).append(" ")
+                                .append(edit.getText()).append("\n");
                     }
                 }
             }
-            mNoteSession.setWorkingText(sb.toString());
-        } else {
-            mNoteSession.setWorkingText(mNoteEditor.getText().toString());
+            return new EditorContentSnapshot(sb.toString(), hasCheckedItems);
         }
-        return hasChecked;
+        return new EditorContentSnapshot(mNoteEditor.getText().toString(), false);
     }
 
     private boolean saveNote() {
-        getWorkingText();
-        boolean saved = mNoteEditViewModel.save();
+        EditorContentSnapshot contentSnapshot = collectWorkingText();
+        boolean saved = mNoteEditViewModel.save(contentSnapshot.text);
         syncSessionFromViewModel();
         if (saved) {
-            if (mNoteSession.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
-                    && mNoteSession.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
-                updateWidget();
-            }
             /**
              * There are two modes from List view to edit view, open one note,
              * create/edit a node. Opening node requires to the original
