@@ -463,14 +463,26 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (deleteItem != null) {
             deleteItem.setEnabled(state.canDelete());
         }
+        MenuItem alertItem = menu.findItem(R.id.menu_alert);
+        if (alertItem != null) {
+            alertItem.setEnabled(state.canSetReminder());
+        }
+        MenuItem listModeItem = menu.findItem(R.id.menu_list_mode);
+        if (listModeItem != null) {
+            listModeItem.setEnabled(state.canToggleListMode());
+        }
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        NoteEditViewState state = mNoteEditViewModel.getCurrentState();
+        if (state == null) {
+            return true;
+        }
         switch (item.getItemId()) {
             case R.id.menu_new_note:
-                createNewNote();
+                createNewNote(state);
                 break;
             case R.id.menu_delete:
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -491,7 +503,10 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 showFontSizePickerDialog();
                 break;
             case R.id.menu_list_mode:
-                int oldMode = mNoteSession.getCheckListMode();
+                if (!state.canToggleListMode()) {
+                    break;
+                }
+                int oldMode = state.getCheckListMode();
                 int newMode = oldMode == 0 ? TextNote.MODE_CHECK_LIST : 0;
                 EditorContentSnapshot modeSnapshot = collectWorkingText();
                 mNoteEditViewModel.changeCheckListMode(modeSnapshot.text,
@@ -500,12 +515,18 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 renderEditorContent(mNoteEditViewModel.getCurrentState());
                 break;
             case R.id.menu_share:
+                if (!state.canShare()) {
+                    break;
+                }
                 EditorContentSnapshot shareSnapshot = collectWorkingText();
                 mNoteEditViewModel.updateWorkingText(shareSnapshot.text);
                 syncSessionFromViewModel();
                 sendTo(this, mNoteSession.getContent());
                 break;
             case R.id.menu_alert:
+                if (!state.canSetReminder()) {
+                    break;
+                }
                 setReminder();
                 break;
             case R.id.menu_delete_remind:
@@ -620,7 +641,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         context.startActivity(intent);
     }
 
-    private void createNewNote() {
+    private void createNewNote(NoteEditViewState state) {
         // Firstly, save current editing notes
         saveNote();
 
@@ -628,7 +649,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         finish();
         Intent intent = new Intent(this, NoteEditActivity.class);
         intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
-        intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, mNoteSession.getFolderId());
+        intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, state.getFolderId());
         startActivity(intent);
     }
 

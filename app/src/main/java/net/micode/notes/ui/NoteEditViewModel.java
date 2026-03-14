@@ -235,6 +235,8 @@ public final class NoteEditViewModel extends ViewModel {
                 content,
                 hasContent,
                 hasContent,
-                noteSession.existsInDatabase() || hasContent));
+                noteSession.existsInDatabase() || hasContent,
+                hasContent,
+                true));
     }
 }
