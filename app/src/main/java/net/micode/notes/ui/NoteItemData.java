@@ -70,12 +70,6 @@ public class NoteItemData {
     private String mName;
     private String mPhoneNumber;
 
-    private boolean mIsLastItem;
-    private boolean mIsFirstItem;
-    private boolean mIsOnlyOneItem;
-    private boolean mIsOneNoteFollowingFolder;
-    private boolean mIsMultiNotesFollowingFolder;
-
     public NoteItemData(Context context, Cursor cursor) {
         mId = cursor.getLong(ID_COLUMN);
         mAlertDate = cursor.getLong(ALERTED_DATE_COLUMN);
@@ -106,56 +100,10 @@ public class NoteItemData {
         if (mName == null) {
             mName = "";
         }
-        checkPostion(cursor);
-    }
-
-    private void checkPostion(Cursor cursor) {
-        mIsLastItem = cursor.isLast() ? true : false;
-        mIsFirstItem = cursor.isFirst() ? true : false;
-        mIsOnlyOneItem = (cursor.getCount() == 1);
-        mIsMultiNotesFollowingFolder = false;
-        mIsOneNoteFollowingFolder = false;
-
-        if (mType == Notes.TYPE_NOTE && !mIsFirstItem) {
-            int position = cursor.getPosition();
-            if (cursor.moveToPrevious()) {
-                if (cursor.getInt(TYPE_COLUMN) == Notes.TYPE_FOLDER
-                        || cursor.getInt(TYPE_COLUMN) == Notes.TYPE_SYSTEM) {
-                    if (cursor.getCount() > (position + 1)) {
-                        mIsMultiNotesFollowingFolder = true;
-                    } else {
-                        mIsOneNoteFollowingFolder = true;
-                    }
-                }
-                if (!cursor.moveToNext()) {
-                    throw new IllegalStateException("cursor move to previous but can't move back");
-                }
-            }
-        }
-    }
-
-    public boolean isOneFollowingFolder() {
-        return mIsOneNoteFollowingFolder;
-    }
-
-    public boolean isMultiFollowingFolder() {
-        return mIsMultiNotesFollowingFolder;
-    }
-
-    public boolean isLast() {
-        return mIsLastItem;
     }
 
     public String getCallName() {
         return mName;
-    }
-
-    public boolean isFirst() {
-        return mIsFirstItem;
-    }
-
-    public boolean isSingle() {
-        return mIsOnlyOneItem;
     }
 
     public long getId() {

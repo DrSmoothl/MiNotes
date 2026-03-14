@@ -24,13 +24,19 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
+import com.google.android.material.card.MaterialCardView;
+
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.tool.DataUtils;
-import net.micode.notes.tool.ResourceParser.NoteItemBgResources;
+import net.micode.notes.tool.ResourceParser;
+import net.micode.notes.tool.ResourceParser.NoteColorResources;
 
 
 public class NotesListItem extends LinearLayout {
+    private MaterialCardView mCardView;
     private ImageView mAlert;
     private TextView mTitle;
     private TextView mTime;
@@ -41,6 +47,7 @@ public class NotesListItem extends LinearLayout {
     public NotesListItem(Context context) {
         super(context);
         inflate(context, R.layout.note_item, this);
+        mCardView = (MaterialCardView) findViewById(R.id.note_item);
         mAlert = (ImageView) findViewById(R.id.iv_alert_icon);
         mTitle = (TextView) findViewById(R.id.tv_title);
         mTime = (TextView) findViewById(R.id.tv_time);
@@ -96,23 +103,45 @@ public class NotesListItem extends LinearLayout {
         }
         mTime.setText(DateUtils.getRelativeTimeSpanString(data.getModifiedDate()));
 
-        setBackground(data);
+        applyCardStyle(data);
     }
 
-    private void setBackground(NoteItemData data) {
-        int id = data.getBgColorId();
-        if (data.getType() == Notes.TYPE_NOTE) {
-            if (data.isSingle() || data.isOneFollowingFolder()) {
-                setBackgroundResource(NoteItemBgResources.getNoteBgSingleRes(id));
-            } else if (data.isLast()) {
-                setBackgroundResource(NoteItemBgResources.getNoteBgLastRes(id));
-            } else if (data.isFirst() || data.isMultiFollowingFolder()) {
-                setBackgroundResource(NoteItemBgResources.getNoteBgFirstRes(id));
-            } else {
-                setBackgroundResource(NoteItemBgResources.getNoteBgNormalRes(id));
-            }
-        } else {
-            setBackgroundResource(NoteItemBgResources.getFolderBgRes());
+    private void applyCardStyle(NoteItemData data) {
+        mCardView.setStrokeColor(ContextCompat.getColor(getContext(), R.color.notes_outline_soft));
+        if (data.getId() == Notes.ID_CALL_RECORD_FOLDER) {
+            mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+                    R.color.notes_call_card));
+            return;
+        }
+
+        if (data.getType() == Notes.TYPE_FOLDER || data.getType() == Notes.TYPE_SYSTEM) {
+            mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+                    R.color.notes_folder_card));
+            return;
+        }
+
+        switch (data.getBgColorId()) {
+            case ResourceParser.BLUE:
+        mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+            NoteColorResources.getNoteCardBackgroundColor(ResourceParser.BLUE)));
+                break;
+            case ResourceParser.WHITE:
+        mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+            NoteColorResources.getNoteCardBackgroundColor(ResourceParser.WHITE)));
+                break;
+            case ResourceParser.GREEN:
+        mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+            NoteColorResources.getNoteCardBackgroundColor(ResourceParser.GREEN)));
+                break;
+            case ResourceParser.RED:
+        mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+            NoteColorResources.getNoteCardBackgroundColor(ResourceParser.RED)));
+                break;
+            case ResourceParser.YELLOW:
+            default:
+        mCardView.setCardBackgroundColor(ContextCompat.getColor(getContext(),
+            NoteColorResources.getNoteCardBackgroundColor(ResourceParser.YELLOW)));
+                break;
         }
     }
 

@@ -15,386 +15,178 @@
      limitations under the License.
 -->
 
-<FrameLayout
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:background="@drawable/list_background"
-    xmlns:android="http://schemas.android.com/apk/res/android">
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/notes_app_background"
+    android:orientation="vertical">
 
-    <LinearLayout
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:orientation="vertical">
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:elevation="0dp">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/top_app_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@android:color/transparent"
+            android:elevation="0dp"
+            android:minHeight="?attr/actionBarSize"
+            app:titleTextColor="@color/notes_on_surface" />
 
         <LinearLayout
-            android:id="@+id/note_title"
-            android:layout_width="fill_parent"
-            android:layout_height="wrap_content">
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="20dp"
+            android:paddingTop="4dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="12dp">
 
             <TextView
-                android:id="@+id/tv_modified_date"
-                android:layout_width="0dip"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_gravity="left|center_vertical"
-                android:layout_marginRight="8dip"
-                android:textAppearance="@style/TextAppearanceSecondaryItem" />
-
-            <ImageView
-                android:id="@+id/iv_alert_icon"
+                android:id="@+id/editor_screen_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:background="@drawable/title_alert" />
+                android:text="@string/notes_editor_new"
+                android:textColor="@color/notes_on_surface"
+                android:textSize="28sp"
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tv_alert_date"
-                android:layout_width="wrap_content"
+                android:id="@+id/editor_screen_subtitle"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_marginLeft="2dip"
-                android:layout_marginRight="8dip"
-                android:textAppearance="@style/TextAppearanceSecondaryItem" />
-
-            <ImageButton
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:background="@drawable/bg_btn_set_color" />
+                android:layout_marginTop="6dp"
+                android:text="@string/notes_editor_hint"
+                android:textColor="@color/notes_on_surface_muted"
+                android:textSize="15sp" />
         </LinearLayout>
+    </com.google.android.material.appbar.AppBarLayout>
 
-        <LinearLayout
-            android:id="@+id/sv_note_edit"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:orientation="vertical">
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:paddingLeft="16dp"
+        android:paddingTop="4dp"
+        android:paddingRight="16dp"
+        android:paddingBottom="16dp">
 
-            <ImageView
-                android:layout_width="fill_parent"
-                android:layout_height="7dip"
-                android:background="@drawable/bg_color_btn_mask" />
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:cardBackgroundColor="@color/notes_surface_high"
+            app:cardCornerRadius="30dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/notes_outline_soft"
+            app:strokeWidth="1dp">
 
-            <ScrollView
-                android:layout_width="fill_parent"
-                android:layout_height="0dip"
-                android:layout_weight="1"
-                android:scrollbars="none"
-                android:overScrollMode="never"
-                android:layout_gravity="left|top"
-                android:fadingEdgeLength="0dip">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
 
                 <LinearLayout
-                    android:layout_width="fill_parent"
-                    android:layout_height="fill_parent">
+                    android:id="@+id/note_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:minHeight="64dp"
+                    android:paddingLeft="18dp"
+                    android:paddingTop="12dp"
+                    android:paddingRight="18dp"
+                    android:paddingBottom="12dp">
 
-                    <net.micode.notes.ui.NoteEditText
-                        android:id="@+id/note_edit_view"
-                        android:layout_width="fill_parent"
+                    <TextView
+                        android:id="@+id/tv_modified_date"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:gravity="left|top"
-                        android:background="@null"
-                        android:autoLink="all"
-                        android:linksClickable="false"
-                        android:minLines="12"
-                        android:textAppearance="@style/TextAppearancePrimaryItem"
-                        android:lineSpacingMultiplier="1.2" />
+                        android:layout_marginRight="8dip"
+                        android:layout_weight="1"
+                        android:textAppearance="@style/TextAppearanceSecondaryItem" />
 
-                    <LinearLayout
-                        android:id="@+id/note_edit_list"
-                        android:layout_width="fill_parent"
+                    <ImageView
+                        android:id="@+id/iv_alert_icon"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginLeft="-10dip"
-                        android:visibility="gone" />
+                        android:background="@drawable/title_alert" />
+
+                    <TextView
+                        android:id="@+id/tv_alert_date"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="6dip"
+                        android:layout_marginRight="10dip"
+                        android:textAppearance="@style/TextAppearanceSecondaryItem"
+                        android:textColor="@color/notes_chip_text" />
+
+                    <ImageView
+                        android:id="@+id/btn_set_bg_color"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:background="@color/notes_action_surface"
+                        android:contentDescription="@string/notes_palette_description"
+                        android:padding="8dp"
+                        android:src="@android:drawable/ic_menu_edit"
+                        android:tint="@color/notes_on_surface" />
                 </LinearLayout>
-            </ScrollView>
 
-            <ImageView
-                android:layout_width="fill_parent"
-                android:layout_height="7dip"
-                android:background="@drawable/bg_color_btn_mask" />
-        </LinearLayout>
-    </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/sv_note_edit"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-    <ImageView
-        android:id="@+id/btn_set_bg_color"
-        android:layout_height="43dip"
-        android:layout_width="wrap_content"
-        android:background="@drawable/bg_color_btn_mask"
-        android:layout_gravity="top|right" />
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="0dp"
+                        android:layout_weight="1"
+                        android:fadingEdgeLength="0dip"
+                        android:overScrollMode="never"
+                        android:paddingBottom="8dp"
+                        android:scrollbars="none">
 
-    <LinearLayout
-        android:id="@+id/note_bg_color_selector"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/note_edit_color_selector_panel"
-        android:layout_marginTop="30dip"
-        android:layout_marginRight="8dip"
-        android:layout_gravity="top|right"
-        android:visibility="gone">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingLeft="8dp"
+                            android:paddingRight="8dp"
+                            android:paddingBottom="16dp">
 
-        <FrameLayout
-            android:layout_width="0dip"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
+                            <net.micode.notes.ui.NoteEditText
+                                android:id="@+id/note_edit_view"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:autoLink="all"
+                                android:background="@null"
+                                android:gravity="left|top"
+                                android:lineSpacingMultiplier="1.2"
+                                android:linksClickable="false"
+                                android:minLines="12"
+                                android:paddingLeft="18dp"
+                                android:paddingTop="18dp"
+                                android:paddingRight="18dp"
+                                android:paddingBottom="28dp"
+                                android:textAppearance="@style/TextAppearancePrimaryItem" />
 
-            <ImageView
-                android:id="@+id/iv_bg_yellow"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-            <ImageView
-                android:id="@+id/iv_bg_yellow_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:layout_marginRight="5dip"
-                android:focusable="false"
-                android:visibility="gone"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:layout_width="0dip"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
-
-            <ImageView
-                android:id="@+id/iv_bg_blue"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-            <ImageView
-                android:id="@+id/iv_bg_blue_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:layout_marginRight="3dip"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:layout_width="0dip"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
-
-            <ImageView
-                android:id="@+id/iv_bg_white"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-            <ImageView
-                android:id="@+id/iv_bg_white_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:layout_marginRight="2dip"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:layout_width="0dip"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
-
-            <ImageView
-                android:id="@+id/iv_bg_green"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-            <ImageView
-                android:id="@+id/iv_bg_green_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:layout_width="0dip"
-            android:layout_height="match_parent"
-            android:layout_weight="1">
-
-            <ImageView
-                android:id="@+id/iv_bg_red"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-            <ImageView
-                android:id="@+id/iv_bg_red_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-    </LinearLayout>
-
-    <LinearLayout
-        android:id="@+id/font_size_selector"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/font_size_selector_bg"
-        android:layout_gravity="bottom"
-        android:visibility="gone">
-
-        <FrameLayout
-            android:id="@+id/ll_font_small"
-            android:layout_width="0dip"
-            android:layout_height="wrap_content"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="center"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/font_small"
-                    android:layout_marginBottom="5dip" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_font_small"
-                    android:textAppearance="@style/TextAppearanceUnderMenuIcon" />
+                            <LinearLayout
+                                android:id="@+id/note_edit_list"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginLeft="0dp"
+                                android:orientation="vertical"
+                                android:paddingLeft="10dp"
+                                android:paddingRight="10dp"
+                                android:visibility="gone" />
+                        </LinearLayout>
+                    </ScrollView>
+                </LinearLayout>
             </LinearLayout>
-
-            <ImageView
-                android:id="@+id/iv_small_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:layout_marginRight="6dip"
-                android:layout_marginBottom="-7dip"
-                android:focusable="false"
-                android:visibility="gone"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/ll_font_normal"
-            android:layout_width="0dip"
-            android:layout_height="wrap_content"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="center"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/font_normal"
-                    android:layout_marginBottom="5dip" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_font_normal"
-                    android:textAppearance="@style/TextAppearanceUnderMenuIcon" />
-            </LinearLayout>
-
-            <ImageView
-                android:id="@+id/iv_medium_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:layout_marginRight="6dip"
-                android:layout_marginBottom="-7dip"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/ll_font_large"
-            android:layout_width="0dip"
-            android:layout_height="wrap_content"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="center"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/font_large"
-                    android:layout_marginBottom="5dip" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_font_large"
-                    android:textAppearance="@style/TextAppearanceUnderMenuIcon" />
-            </LinearLayout>
-
-            <ImageView
-                android:id="@+id/iv_large_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:layout_marginRight="6dip"
-                android:layout_marginBottom="-7dip"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-
-        <FrameLayout
-            android:id="@+id/ll_font_super"
-            android:layout_width="0dip"
-            android:layout_height="wrap_content"
-            android:layout_weight="1">
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:layout_gravity="center"
-                android:gravity="center">
-
-                <ImageView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:src="@drawable/font_super"
-                    android:layout_marginBottom="5dip" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/menu_font_super"
-                    android:textAppearance="@style/TextAppearanceUnderMenuIcon" />
-            </LinearLayout>
-
-            <ImageView
-                android:id="@+id/iv_super_select"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="bottom|right"
-                android:focusable="false"
-                android:visibility="gone"
-                android:layout_marginRight="6dip"
-                android:layout_marginBottom="-7dip"
-                android:src="@drawable/selected" />
-        </FrameLayout>
-    </LinearLayout>
-</FrameLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </FrameLayout>
+</LinearLayout>

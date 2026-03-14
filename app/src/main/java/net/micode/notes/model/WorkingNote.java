@@ -29,7 +29,6 @@ import net.micode.notes.data.Notes.DataColumns;
 import net.micode.notes.data.Notes.DataConstants;
 import net.micode.notes.data.Notes.NoteColumns;
 import net.micode.notes.data.Notes.TextNote;
-import net.micode.notes.tool.ResourceParser.NoteBgResources;
 
 
 public class WorkingNote {
@@ -310,16 +309,8 @@ public class WorkingNote {
         return mModifiedDate;
     }
 
-    public int getBgColorResId() {
-        return NoteBgResources.getNoteBgResource(mBgColorId);
-    }
-
     public int getBgColorId() {
         return mBgColorId;
-    }
-
-    public int getTitleBgResId() {
-        return NoteBgResources.getNoteTitleBgResource(mBgColorId);
     }
 
     public int getCheckListMode() {

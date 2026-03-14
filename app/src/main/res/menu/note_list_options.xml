@@ -28,4 +28,9 @@
         android:title="@string/menu_delete"
         android:icon="@drawable/menu_delete"
         android:showAsAction="always|withText" />
+
+    <item
+        android:id="@+id/action_select_all"
+        android:title="@string/menu_select_all"
+        android:showAsAction="never" />
 </menu>

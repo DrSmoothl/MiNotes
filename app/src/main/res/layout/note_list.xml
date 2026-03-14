@@ -15,44 +15,126 @@
      limitations under the License.
 -->
 
-<FrameLayout
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:background="@drawable/list_background">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/notes_app_background">
 
     <LinearLayout
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/tv_title_bar"
-            android:layout_width="fill_parent"
+        <com.google.android.material.appbar.AppBarLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@drawable/title_bar_bg"
-            android:visibility="gone"
-            android:gravity="center_vertical"
-            android:singleLine="true"
-            android:textColor="#FFEAD1AE"
-            android:textSize="@dimen/text_font_size_medium" />
+            android:background="@android:color/transparent"
+            android:elevation="0dp">
 
-        <ListView
+            <com.google.android.material.appbar.MaterialToolbar
+                android:id="@+id/top_app_bar"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="@android:color/transparent"
+                android:elevation="0dp"
+                android:minHeight="?attr/actionBarSize"
+                android:paddingLeft="4dp"
+                android:paddingRight="4dp"
+                app:titleTextColor="@color/notes_on_surface" />
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="16dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginRight="16dp"
+                android:layout_marginBottom="8dp"
+                app:cardBackgroundColor="@color/notes_surface_high"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/notes_outline_soft"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:id="@+id/header_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/notes_home_headline"
+                        android:textColor="@color/notes_on_surface"
+                        android:textSize="28sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/header_subtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/notes_home_summary"
+                        android:textColor="@color/notes_on_surface_muted"
+                        android:textSize="15sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_search_notes"
+                            style="@style/Widget.Material3.Button.TonalButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/notes_search_shortcut"
+                            app:cornerRadius="18dp"
+                            app:icon="@android:drawable/ic_menu_search" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_settings"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginLeft="10dp"
+                            android:text="@string/notes_settings_shortcut"
+                            app:cornerRadius="18dp"
+                            app:icon="@android:drawable/ic_menu_manage" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </com.google.android.material.appbar.AppBarLayout>
+
+        <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/notes_list"
-            android:layout_width="fill_parent"
-            android:layout_height="0dip"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1"
-            android:cacheColorHint="@null"
-            android:listSelector="@android:color/transparent"
-            android:divider="@null"
-            android:fadingEdge="@null" />
+            android:clipToPadding="false"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingLeft="16dp"
+            android:paddingTop="4dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="112dp"
+            android:scrollbars="vertical" />
     </LinearLayout>
 
-    <Button
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/btn_new_note"
-        android:background="@drawable/new_note"
-        android:layout_width="match_parent"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:focusable="false"
-        android:layout_gravity="bottom" />
-</FrameLayout>
+        android:layout_gravity="bottom|end"
+        android:layout_margin="24dp"
+        android:contentDescription="@string/notelist_menu_new"
+        android:text="@string/notes_create_cta"
+        app:backgroundTint="@color/notes_primary"
+        app:borderWidth="0dp"
+        app:icon="@android:drawable/ic_input_add"
+        app:tint="@color/notes_on_primary" />
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

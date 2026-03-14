@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/notes_surface" />
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="315"
+                android:centerColor="@color/notes_surface"
+                android:endColor="@color/notes_surface"
+                android:startColor="@color/notes_surface_accent" />
+        </shape>
+    </item>
+</layer-list>

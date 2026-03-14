@@ -15,64 +15,86 @@
      limitations under the License.
 -->
 
-<FrameLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/note_item"
-    android:layout_width="fill_parent"
-    android:layout_height="fill_parent">
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="1dp">
 
-    <LinearLayout
-        android:layout_width="fill_parent"
+    <FrameLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_gravity="center_vertical"
-        android:gravity="center_vertical">
+        android:minHeight="88dp"
+        android:paddingLeft="18dp"
+        android:paddingTop="18dp"
+        android:paddingRight="18dp"
+        android:paddingBottom="18dp">
 
         <LinearLayout
-            android:layout_width="0dip"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/tv_name"
-                android:layout_width="wrap_content"
-                android:layout_height="0dip"
-                android:layout_weight="1"
-                android:textAppearance="@style/TextAppearancePrimaryItem"
-                android:visibility="gone" />
+            android:layout_gravity="center_vertical"
+            android:gravity="center_vertical">
 
             <LinearLayout
-                android:layout_width="fill_parent"
+                android:layout_width="0dip"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/tv_title"
-                    android:layout_width="0dip"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:singleLine="true" />
-
-                <TextView
-                    android:id="@+id/tv_time"
+                    android:id="@+id/tv_name"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textAppearance="@style/TextAppearanceSecondaryItem" />
+                    android:layout_marginBottom="6dp"
+                    android:textAppearance="@style/TextAppearancePrimaryItem"
+                    android:textColor="@color/notes_on_surface_muted"
+                    android:visibility="gone" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_title"
+                        android:layout_width="0dip"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:maxLines="2"
+                        android:textColor="@color/notes_on_surface"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="12dp"
+                        android:textAppearance="@style/TextAppearanceSecondaryItem"
+                        android:textColor="@color/notes_on_surface_muted" />
+                </LinearLayout>
             </LinearLayout>
+
+            <CheckBox
+                android:id="@android:id/checkbox"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="false"
+                android:focusable="false"
+                android:visibility="gone" />
         </LinearLayout>
 
-        <CheckBox
-            android:id="@android:id/checkbox"
+        <ImageView
+            android:id="@+id/iv_alert_icon"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:focusable="false"
-            android:clickable="false"
-            android:visibility="gone" />
-    </LinearLayout>
-
-    <ImageView
-        android:id="@+id/iv_alert_icon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|right"/>
-</FrameLayout>
+            android:layout_gravity="top|right"
+            android:layout_marginTop="4dp" />
+    </FrameLayout>
+</com.google.android.material.card.MaterialCardView>

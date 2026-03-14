@@ -37,7 +37,6 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
@@ -50,10 +49,13 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.activity.ComponentActivity;
 import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
+
+import com.google.android.material.appbar.MaterialToolbar;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
@@ -62,21 +64,35 @@ import net.micode.notes.model.WorkingNote;
 import net.micode.notes.model.WorkingNote.NoteSettingChangedListener;
 import net.micode.notes.tool.DataUtils;
 import net.micode.notes.tool.ResourceParser;
+import net.micode.notes.tool.ResourceParser.NoteColorResources;
 import net.micode.notes.tool.ResourceParser.TextAppearanceResources;
 import net.micode.notes.ui.DateTimePickerDialog.OnDateTimeSetListener;
 import net.micode.notes.ui.NoteEditText.OnTextViewChangeListener;
 import net.micode.notes.widget.NoteWidgetProvider_2x;
 import net.micode.notes.widget.NoteWidgetProvider_4x;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
-public class NoteEditActivity extends ComponentActivity implements OnClickListener,
+public class NoteEditActivity extends AppCompatActivity implements OnClickListener,
         NoteSettingChangedListener, OnTextViewChangeListener {
+    private static final int[] BACKGROUND_IDS = new int[] {
+        ResourceParser.YELLOW,
+        ResourceParser.BLUE,
+        ResourceParser.WHITE,
+        ResourceParser.GREEN,
+        ResourceParser.RED
+    };
+
+    private static final int[] FONT_SIZE_IDS = new int[] {
+        ResourceParser.TEXT_SMALL,
+        ResourceParser.TEXT_MEDIUM,
+        ResourceParser.TEXT_LARGE,
+        ResourceParser.TEXT_SUPER
+    };
+
     private class HeadViewHolder {
         public TextView tvModified;
 
@@ -87,49 +103,11 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
         public ImageView ibSetBgColor;
     }
 
-    private static final Map<Integer, Integer> sBgSelectorBtnsMap = new HashMap<Integer, Integer>();
-    static {
-        sBgSelectorBtnsMap.put(R.id.iv_bg_yellow, ResourceParser.YELLOW);
-        sBgSelectorBtnsMap.put(R.id.iv_bg_red, ResourceParser.RED);
-        sBgSelectorBtnsMap.put(R.id.iv_bg_blue, ResourceParser.BLUE);
-        sBgSelectorBtnsMap.put(R.id.iv_bg_green, ResourceParser.GREEN);
-        sBgSelectorBtnsMap.put(R.id.iv_bg_white, ResourceParser.WHITE);
-    }
-
-    private static final Map<Integer, Integer> sBgSelectorSelectionMap = new HashMap<Integer, Integer>();
-    static {
-        sBgSelectorSelectionMap.put(ResourceParser.YELLOW, R.id.iv_bg_yellow_select);
-        sBgSelectorSelectionMap.put(ResourceParser.RED, R.id.iv_bg_red_select);
-        sBgSelectorSelectionMap.put(ResourceParser.BLUE, R.id.iv_bg_blue_select);
-        sBgSelectorSelectionMap.put(ResourceParser.GREEN, R.id.iv_bg_green_select);
-        sBgSelectorSelectionMap.put(ResourceParser.WHITE, R.id.iv_bg_white_select);
-    }
-
-    private static final Map<Integer, Integer> sFontSizeBtnsMap = new HashMap<Integer, Integer>();
-    static {
-        sFontSizeBtnsMap.put(R.id.ll_font_large, ResourceParser.TEXT_LARGE);
-        sFontSizeBtnsMap.put(R.id.ll_font_small, ResourceParser.TEXT_SMALL);
-        sFontSizeBtnsMap.put(R.id.ll_font_normal, ResourceParser.TEXT_MEDIUM);
-        sFontSizeBtnsMap.put(R.id.ll_font_super, ResourceParser.TEXT_SUPER);
-    }
-
-    private static final Map<Integer, Integer> sFontSelectorSelectionMap = new HashMap<Integer, Integer>();
-    static {
-        sFontSelectorSelectionMap.put(ResourceParser.TEXT_LARGE, R.id.iv_large_select);
-        sFontSelectorSelectionMap.put(ResourceParser.TEXT_SMALL, R.id.iv_small_select);
-        sFontSelectorSelectionMap.put(ResourceParser.TEXT_MEDIUM, R.id.iv_medium_select);
-        sFontSelectorSelectionMap.put(ResourceParser.TEXT_SUPER, R.id.iv_super_select);
-    }
-
     private static final String TAG = "NoteEditActivity";
 
     private HeadViewHolder mNoteHeaderHolder;
 
     private View mHeadViewPanel;
-
-    private View mNoteBgColorSelector;
-
-    private View mFontSizeSelector;
 
     private EditText mNoteEditor;
 
@@ -148,6 +126,12 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
     public static final String TAG_UNCHECKED = String.valueOf('\u25A1');
 
     private LinearLayout mEditTextList;
+
+    private MaterialToolbar mToolbar;
+
+    private TextView mEditorScreenTitle;
+
+    private TextView mEditorScreenSubtitle;
 
     private String mUserQuery;
     private Pattern mPattern;
@@ -276,6 +260,7 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
     }
 
     private void initNoteScreen() {
+        updateScreenHeader();
         mNoteEditor.setTextAppearance(TextAppearanceResources
             .getTexAppearanceResource(mFontSizeId));
         if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
@@ -284,11 +269,7 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
             mNoteEditor.setText(getHighlightQueryResult(mWorkingNote.getContent(), mUserQuery));
             mNoteEditor.setSelection(mNoteEditor.getText().length());
         }
-        for (Integer id : sBgSelectorSelectionMap.keySet()) {
-            findViewById(sBgSelectorSelectionMap.get(id)).setVisibility(View.GONE);
-        }
-        mHeadViewPanel.setBackgroundResource(mWorkingNote.getTitleBgResId());
-        mNoteEditorPanel.setBackgroundResource(mWorkingNote.getBgColorResId());
+        applyEditorColors();
 
         mNoteHeaderHolder.tvModified.setText(DateUtils.formatDateTime(this,
                 mWorkingNote.getModifiedDate(), DateUtils.FORMAT_SHOW_DATE
@@ -340,37 +321,20 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
         Log.d(TAG, "Save working note id: " + mWorkingNote.getNoteId() + " onSaveInstanceState");
     }
 
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (mNoteBgColorSelector.getVisibility() == View.VISIBLE
-                && !inRangeOfView(mNoteBgColorSelector, ev)) {
-            mNoteBgColorSelector.setVisibility(View.GONE);
-            return true;
-        }
-
-        if (mFontSizeSelector.getVisibility() == View.VISIBLE
-                && !inRangeOfView(mFontSizeSelector, ev)) {
-            mFontSizeSelector.setVisibility(View.GONE);
-            return true;
-        }
-        return super.dispatchTouchEvent(ev);
-    }
-
-    private boolean inRangeOfView(View view, MotionEvent ev) {
-        int []location = new int[2];
-        view.getLocationOnScreen(location);
-        int x = location[0];
-        int y = location[1];
-        if (ev.getX() < x
-                || ev.getX() > (x + view.getWidth())
-                || ev.getY() < y
-                || ev.getY() > (y + view.getHeight())) {
-                    return false;
-                }
-        return true;
-    }
-
     private void initResources() {
+        mToolbar = (MaterialToolbar) findViewById(R.id.top_app_bar);
+        setSupportActionBar(mToolbar);
+        mToolbar.setTitle(" ");
+        mToolbar.setNavigationIcon(AppCompatResources.getDrawable(this,
+                androidx.appcompat.R.drawable.abc_ic_ab_back_material));
+        mToolbar.setNavigationOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                handleBackNavigation();
+            }
+        });
+        mEditorScreenTitle = (TextView) findViewById(R.id.editor_screen_title);
+        mEditorScreenSubtitle = (TextView) findViewById(R.id.editor_screen_subtitle);
         mHeadViewPanel = findViewById(R.id.note_title);
         mNoteHeaderHolder = new HeadViewHolder();
         mNoteHeaderHolder.tvModified = (TextView) findViewById(R.id.tv_modified_date);
@@ -380,25 +344,9 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
         mNoteHeaderHolder.ibSetBgColor.setOnClickListener(this);
         mNoteEditor = (EditText) findViewById(R.id.note_edit_view);
         mNoteEditorPanel = findViewById(R.id.sv_note_edit);
-        mNoteBgColorSelector = findViewById(R.id.note_bg_color_selector);
-        for (int id : sBgSelectorBtnsMap.keySet()) {
-            ImageView iv = (ImageView) findViewById(id);
-            iv.setOnClickListener(this);
-        }
-
-        mFontSizeSelector = findViewById(R.id.font_size_selector);
-        for (int id : sFontSizeBtnsMap.keySet()) {
-            View view = findViewById(id);
-            view.setOnClickListener(this);
-        };
         mSharedPrefs = PreferenceManager.getDefaultSharedPreferences(this);
         mFontSizeId = mSharedPrefs.getInt(PREFERENCE_FONT_SIZE, ResourceParser.BG_DEFAULT_FONT_SIZE);
-        /**
-         * HACKME: Fix bug of store the resource id in shared preference.
-         * The id may larger than the length of resources, in this case,
-         * return the {@link ResourceParser#BG_DEFAULT_FONT_SIZE}
-         */
-        if(mFontSizeId >= TextAppearanceResources.getResourcesSize()) {
+        if (mFontSizeId >= TextAppearanceResources.getResourcesSize()) {
             mFontSizeId = ResourceParser.BG_DEFAULT_FONT_SIZE;
         }
         mEditTextList = (LinearLayout) findViewById(R.id.note_edit_list);
@@ -407,10 +355,9 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
     @Override
     protected void onPause() {
         super.onPause();
-        if(saveNote()) {
+        if (saveNote()) {
             Log.d(TAG, "Note data was saved with length:" + mWorkingNote.getContent().length());
         }
-        clearSettingState();
     }
 
     private void updateWidget() {
@@ -433,57 +380,35 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
     }
 
     public void onClick(View v) {
-        int id = v.getId();
-        if (id == R.id.btn_set_bg_color) {
-            mNoteBgColorSelector.setVisibility(View.VISIBLE);
-            findViewById(sBgSelectorSelectionMap.get(mWorkingNote.getBgColorId())).setVisibility(
-                    -                    View.VISIBLE);
-        } else if (sBgSelectorBtnsMap.containsKey(id)) {
-            findViewById(sBgSelectorSelectionMap.get(mWorkingNote.getBgColorId())).setVisibility(
-                    View.GONE);
-            mWorkingNote.setBgColorId(sBgSelectorBtnsMap.get(id));
-            mNoteBgColorSelector.setVisibility(View.GONE);
-        } else if (sFontSizeBtnsMap.containsKey(id)) {
-            findViewById(sFontSelectorSelectionMap.get(mFontSizeId)).setVisibility(View.GONE);
-            mFontSizeId = sFontSizeBtnsMap.get(id);
-            mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
-            findViewById(sFontSelectorSelectionMap.get(mFontSizeId)).setVisibility(View.VISIBLE);
-            if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-                getWorkingText();
-                switchToListMode(mWorkingNote.getContent());
-            } else {
-                mNoteEditor.setTextAppearance(
-                    TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
-            }
-            mFontSizeSelector.setVisibility(View.GONE);
+        if (v.getId() == R.id.btn_set_bg_color) {
+            showBackgroundPickerDialog();
         }
     }
 
     private void handleBackNavigation() {
-        if(clearSettingState()) {
-            return;
-        }
-
         saveNote();
         finish();
     }
 
-    private boolean clearSettingState() {
-        if (mNoteBgColorSelector.getVisibility() == View.VISIBLE) {
-            mNoteBgColorSelector.setVisibility(View.GONE);
-            return true;
-        } else if (mFontSizeSelector.getVisibility() == View.VISIBLE) {
-            mFontSizeSelector.setVisibility(View.GONE);
-            return true;
-        }
-        return false;
+    public void onBackgroundColorChanged() {
+        applyEditorColors();
     }
 
-    public void onBackgroundColorChanged() {
-        findViewById(sBgSelectorSelectionMap.get(mWorkingNote.getBgColorId())).setVisibility(
-                View.VISIBLE);
-        mNoteEditorPanel.setBackgroundResource(mWorkingNote.getBgColorResId());
-        mHeadViewPanel.setBackgroundResource(mWorkingNote.getTitleBgResId());
+    private void updateScreenHeader() {
+        if (mEditorScreenTitle != null) {
+            mEditorScreenTitle.setText(mWorkingNote.existInDatabase()
+                    ? R.string.notes_editor_existing : R.string.notes_editor_new);
+        }
+        if (mEditorScreenSubtitle != null) {
+            mEditorScreenSubtitle.setText(R.string.notes_editor_hint);
+        }
+    }
+
+    private void applyEditorColors() {
+        mHeadViewPanel.setBackgroundColor(ContextCompat.getColor(this,
+                NoteColorResources.getNoteEditorHeaderColor(mWorkingNote.getBgColorId())));
+        mNoteEditorPanel.setBackgroundColor(ContextCompat.getColor(this,
+                NoteColorResources.getNoteEditorBackgroundColor(mWorkingNote.getBgColorId())));
     }
 
     @Override
@@ -491,7 +416,6 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
         if (isFinishing()) {
             return true;
         }
-        clearSettingState();
         menu.clear();
         if (mWorkingNote.getFolderId() == Notes.ID_CALL_RECORD_FOLDER) {
             getMenuInflater().inflate(R.menu.call_note_edit, menu);
@@ -533,8 +457,7 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
                 builder.show();
                 break;
             case R.id.menu_font_size:
-                mFontSizeSelector.setVisibility(View.VISIBLE);
-                findViewById(sFontSelectorSelectionMap.get(mFontSizeId)).setVisibility(View.VISIBLE);
+                showFontSizePickerDialog();
                 break;
             case R.id.menu_list_mode:
                 mWorkingNote.setCheckListMode(mWorkingNote.getCheckListMode() == 0 ?
@@ -554,6 +477,79 @@ public class NoteEditActivity extends ComponentActivity implements OnClickListen
                 break;
         }
         return true;
+    }
+
+    private void showBackgroundPickerDialog() {
+        final String[] labels = new String[] {
+                getString(R.string.note_color_yellow),
+                getString(R.string.note_color_blue),
+                getString(R.string.note_color_white),
+                getString(R.string.note_color_green),
+                getString(R.string.note_color_red)
+        };
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.menu_note_color)
+                .setSingleChoiceItems(labels, getBackgroundSelectionIndex(),
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                mWorkingNote.setBgColorId(BACKGROUND_IDS[which]);
+                                dialog.dismiss();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showFontSizePickerDialog() {
+        final String[] labels = new String[] {
+                getString(R.string.menu_font_small),
+                getString(R.string.menu_font_normal),
+                getString(R.string.menu_font_large),
+                getString(R.string.menu_font_super)
+        };
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle(R.string.menu_font_size)
+                .setSingleChoiceItems(labels, getFontSizeSelectionIndex(),
+                        new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                applyFontSize(FONT_SIZE_IDS[which]);
+                                dialog.dismiss();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private int getBackgroundSelectionIndex() {
+        for (int i = 0; i < BACKGROUND_IDS.length; i++) {
+            if (BACKGROUND_IDS[i] == mWorkingNote.getBgColorId()) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private int getFontSizeSelectionIndex() {
+        for (int i = 0; i < FONT_SIZE_IDS.length; i++) {
+            if (FONT_SIZE_IDS[i] == mFontSizeId) {
+                return i;
+            }
+        }
+        return ResourceParser.BG_DEFAULT_FONT_SIZE;
+    }
+
+    private void applyFontSize(int fontSizeId) {
+        mFontSizeId = fontSizeId;
+        mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
+        if (mWorkingNote.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+            getWorkingText();
+            switchToListMode(mWorkingNote.getContent());
+        } else {
+            mNoteEditor.setTextAppearance(
+                    TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
+        }
     }
 
     private void setReminder() {

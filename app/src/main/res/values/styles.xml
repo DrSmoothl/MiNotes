@@ -65,7 +65,9 @@
         <item name="colorOnPrimaryContainer">@color/notes_on_primary_container</item>
         <item name="colorSurface">@color/notes_surface</item>
         <item name="colorOnSurface">@color/notes_on_surface</item>
-        <item name="android:windowBackground">@color/notes_surface</item>
+        <item name="colorSurfaceContainerHighest">@color/notes_surface_container</item>
+        <item name="colorOutlineVariant">@color/notes_outline_soft</item>
+        <item name="android:windowBackground">@drawable/notes_app_background</item>
     </style>
 
     <style name="NotesSettingsTheme" parent="@style/NotesModernTheme" />

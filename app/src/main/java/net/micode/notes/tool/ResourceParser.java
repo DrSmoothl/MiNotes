@@ -40,92 +40,52 @@ public class ResourceParser {
 
     public static final int BG_DEFAULT_FONT_SIZE = TEXT_MEDIUM;
 
-    public static class NoteBgResources {
-        private final static int [] BG_EDIT_RESOURCES = new int [] {
-            R.drawable.edit_yellow,
-            R.drawable.edit_blue,
-            R.drawable.edit_white,
-            R.drawable.edit_green,
-            R.drawable.edit_red
+    public static final int BACKGROUND_COLOR_COUNT = 5;
+
+    public static class NoteColorResources {
+        private static final int[] CARD_BACKGROUND_COLORS = new int[] {
+            R.color.notes_card_yellow,
+            R.color.notes_card_blue,
+            R.color.notes_card_white,
+            R.color.notes_card_green,
+            R.color.notes_card_red
         };
 
-        private final static int [] BG_EDIT_TITLE_RESOURCES = new int [] {
-            R.drawable.edit_title_yellow,
-            R.drawable.edit_title_blue,
-            R.drawable.edit_title_white,
-            R.drawable.edit_title_green,
-            R.drawable.edit_title_red
+        private static final int[] EDIT_BACKGROUND_COLORS = new int[] {
+                R.color.notes_editor_yellow,
+                R.color.notes_editor_blue,
+                R.color.notes_editor_white,
+                R.color.notes_editor_green,
+                R.color.notes_editor_red
         };
 
-        public static int getNoteBgResource(int id) {
-            return BG_EDIT_RESOURCES[id];
+        private static final int[] EDIT_HEADER_COLORS = new int[] {
+                R.color.notes_editor_header_yellow,
+                R.color.notes_editor_header_blue,
+                R.color.notes_editor_header_white,
+                R.color.notes_editor_header_green,
+                R.color.notes_editor_header_red
+        };
+
+        public static int getNoteEditorBackgroundColor(int id) {
+            return EDIT_BACKGROUND_COLORS[id];
         }
 
-        public static int getNoteTitleBgResource(int id) {
-            return BG_EDIT_TITLE_RESOURCES[id];
+        public static int getNoteEditorHeaderColor(int id) {
+            return EDIT_HEADER_COLORS[id];
+        }
+
+        public static int getNoteCardBackgroundColor(int id) {
+            return CARD_BACKGROUND_COLORS[id];
         }
     }
 
     public static int getDefaultBgId(Context context) {
         if (PreferenceManager.getDefaultSharedPreferences(context).getBoolean(
                 NotesPreferenceActivity.PREFERENCE_SET_BG_COLOR_KEY, false)) {
-            return (int) (Math.random() * NoteBgResources.BG_EDIT_RESOURCES.length);
+            return (int) (Math.random() * BACKGROUND_COLOR_COUNT);
         } else {
             return BG_DEFAULT_COLOR;
-        }
-    }
-
-    public static class NoteItemBgResources {
-        private final static int [] BG_FIRST_RESOURCES = new int [] {
-            R.drawable.list_yellow_up,
-            R.drawable.list_blue_up,
-            R.drawable.list_white_up,
-            R.drawable.list_green_up,
-            R.drawable.list_red_up
-        };
-
-        private final static int [] BG_NORMAL_RESOURCES = new int [] {
-            R.drawable.list_yellow_middle,
-            R.drawable.list_blue_middle,
-            R.drawable.list_white_middle,
-            R.drawable.list_green_middle,
-            R.drawable.list_red_middle
-        };
-
-        private final static int [] BG_LAST_RESOURCES = new int [] {
-            R.drawable.list_yellow_down,
-            R.drawable.list_blue_down,
-            R.drawable.list_white_down,
-            R.drawable.list_green_down,
-            R.drawable.list_red_down,
-        };
-
-        private final static int [] BG_SINGLE_RESOURCES = new int [] {
-            R.drawable.list_yellow_single,
-            R.drawable.list_blue_single,
-            R.drawable.list_white_single,
-            R.drawable.list_green_single,
-            R.drawable.list_red_single
-        };
-
-        public static int getNoteBgFirstRes(int id) {
-            return BG_FIRST_RESOURCES[id];
-        }
-
-        public static int getNoteBgLastRes(int id) {
-            return BG_LAST_RESOURCES[id];
-        }
-
-        public static int getNoteBgSingleRes(int id) {
-            return BG_SINGLE_RESOURCES[id];
-        }
-
-        public static int getNoteBgNormalRes(int id) {
-            return BG_NORMAL_RESOURCES[id];
-        }
-
-        public static int getFolderBgRes() {
-            return R.drawable.list_folder;
         }
     }
 

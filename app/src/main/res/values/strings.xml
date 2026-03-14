@@ -23,7 +23,18 @@
     <string name="widget_havenot_content">No associated note found, click to create associated note.</string>
     <string name="widget_under_visit_mode">Privacy mode，can not see note content</string>
     <string name="notelist_string_info">...</string>
-    <string name="notelist_menu_new">Add note</string>
+     <string name="notelist_menu_new">Add note</string>
+     <string name="notes_home_headline">Local notes, redesigned</string>
+     <string name="notes_home_summary">Fast capture, folders, reminders, and widgets in one local-first workspace.</string>
+     <string name="notes_folder_summary">Folder view with your most recent notes at the top.</string>
+     <string name="notes_call_summary">Call notes grouped by recency.</string>
+     <string name="notes_search_shortcut">Search notes</string>
+     <string name="notes_settings_shortcut">Open settings</string>
+     <string name="notes_create_cta">New note</string>
+     <string name="notes_item_count">%1$d items</string>
+     <string name="notes_editor_new">Compose note</string>
+     <string name="notes_editor_existing">Editing note</string>
+     <string name="notes_editor_hint">Write freely, or switch to checklist mode when structure matters.</string>
     <string name="delete_remind_time_message">Delete reminder successfully</string>
     <string name="set_remind_time_message">Set reminder</string>
     <string name="note_alert_expired">Expired</string>
@@ -57,6 +68,12 @@
     <string name="menu_font_normal">Medium</string>
     <string name="menu_font_large">Large</string>
     <string name="menu_font_super">Super</string>
+     <string name="menu_note_color">Note color</string>
+     <string name="note_color_yellow">Warm yellow</string>
+     <string name="note_color_blue">Ocean blue</string>
+     <string name="note_color_white">Paper white</string>
+     <string name="note_color_green">Mint green</string>
+     <string name="note_color_red">Coral red</string>
     <string name="menu_list_mode">Enter check list</string>
     <string name="menu_normal_mode">Leave check list</string>
     <string name="menu_folder_view">View folder</string>
@@ -119,7 +136,8 @@
 
     <string name="button_delete">Delete</string>
     <string name="call_record_folder_name">Call notes</string>
-    <string name="hint_foler_name">Input name</string>
+     <string name="hint_foler_name">Input name</string>
+     <string name="notes_palette_description">Change note color</string>
 
     <string name="search_label">Searching Notes</string>
     <string name="search_hint">Search notes</string>
