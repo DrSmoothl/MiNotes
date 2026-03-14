@@ -3,6 +3,9 @@ bin/
 gen/
 build/
 .gradle/
+.idea/
+*.iml
+.DS_Store
 
 # Local configuration file (sdk path, etc)
 project.properties
