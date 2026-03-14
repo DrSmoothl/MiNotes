@@ -843,16 +843,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         EditorContentSnapshot contentSnapshot = collectWorkingText();
         boolean saved = mNoteEditViewModel.save(contentSnapshot.text);
         syncSessionFromViewModel();
-        if (saved) {
-            /**
-             * There are two modes from List view to edit view, open one note,
-             * create/edit a node. Opening node requires to the original
-             * position in the list when back from edit view, while creating a
-             * new node requires to the top of the list. This code
-             * {@link #RESULT_OK} is used to identify the create/edit state
-             */
-            setResult(RESULT_OK);
-        }
         return saved;
     }
 
