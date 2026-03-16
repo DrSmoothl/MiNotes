@@ -30,6 +30,8 @@
     <string name="notes_search_idle_message">輸入標題、片段或關鍵字，立刻篩出對應便簽。</string>
     <string name="notes_search_empty_title">沒有找到結果</string>
     <string name="notes_search_empty_message">換個關鍵字，或試試更短的片段。</string>
+    <string name="notes_search_recent_title">最近搜尋</string>
+    <string name="notes_search_clear_history">清空</string>
     <string name="notes_search_untitled_note">未命名便簽</string>
     <string name="delete_remind_time_message">成功刪除提醒</string>
     <string name="set_remind_time_message">創建提醒</string>

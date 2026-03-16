@@ -41,6 +41,8 @@
     <string name="notes_search_idle_message">输入标题、片段或关键词，马上筛出对应便签。</string>
     <string name="notes_search_empty_title">没有找到结果</string>
     <string name="notes_search_empty_message">换个关键词，或者试试更短的片段。</string>
+    <string name="notes_search_recent_title">最近搜索</string>
+    <string name="notes_search_clear_history">清空</string>
     <string name="notes_search_untitled_note">未命名便签</string>
     <string name="delete_remind_time_message">成功删除提醒</string>
     <string name="set_remind_time_message">创建提醒</string>

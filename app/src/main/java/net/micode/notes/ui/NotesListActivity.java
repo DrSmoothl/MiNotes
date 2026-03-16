@@ -147,6 +147,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             }
         });
         mNotesListView = (RecyclerView) findViewById(R.id.notes_list);
+        EdgeToEdgeInsets.applyBottomInsetToPadding(this, mNotesListView);
         mNotesListView.setLayoutManager(new LinearLayoutManager(this));
         mNotesListAdapter = new NotesListAdapter(this, this);
         mNotesListView.setAdapter(mNotesListAdapter);
@@ -155,6 +156,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         findViewById(R.id.button_search_notes).setOnClickListener(this);
         findViewById(R.id.button_settings).setOnClickListener(this);
         mAddNewNote = findViewById(R.id.btn_new_note);
+        EdgeToEdgeInsets.applyBottomInsetToMargin(this, mAddNewNote);
         mAddNewNote.setOnClickListener(this);
         mModeCallBack = new ModeCallback();
         mListViewModel.getViewState().observe(this, this::renderViewState);

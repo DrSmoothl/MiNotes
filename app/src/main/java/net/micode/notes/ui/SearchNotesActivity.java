@@ -2,6 +2,7 @@ package net.micode.notes.ui;
 
 import android.app.SearchManager;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.os.Handler;
@@ -22,10 +23,13 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
 
 import net.micode.notes.R;
@@ -39,6 +43,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class SearchNotesActivity extends AppCompatActivity {
+    private static final String PREF_RECENT_SEARCHES = "pref_recent_searches";
+    private static final String HISTORY_SEPARATOR = "\\n";
+    private static final int MAX_HISTORY_SIZE = 8;
+
     private MaterialToolbar mToolbar;
     private TextInputEditText mSearchInput;
     private TextView mResultsSummary;
@@ -46,7 +54,11 @@ public class SearchNotesActivity extends AppCompatActivity {
     private View mEmptyState;
     private TextView mEmptyTitle;
     private TextView mEmptyMessage;
+    private View mHistorySection;
+    private TextView mClearHistoryButton;
+    private ChipGroup mRecentSearchesGroup;
     private SearchResultsAdapter mAdapter;
+    private SharedPreferences mPreferences;
 
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService mSearchExecutor = Executors.newSingleThreadExecutor();
@@ -80,10 +92,17 @@ public class SearchNotesActivity extends AppCompatActivity {
         mEmptyState = findViewById(R.id.search_empty_state);
         mEmptyTitle = findViewById(R.id.search_empty_title);
         mEmptyMessage = findViewById(R.id.search_empty_message);
+        mHistorySection = findViewById(R.id.search_history_section);
+        mClearHistoryButton = findViewById(R.id.search_clear_history);
+        mRecentSearchesGroup = findViewById(R.id.search_history_group);
+        mPreferences = PreferenceManager.getDefaultSharedPreferences(this);
 
         EdgeToEdgeInsets.applyTopInset(this, mToolbar);
+        EdgeToEdgeInsets.applyBottomInsetToPadding(this, mResultsList);
+        EdgeToEdgeInsets.applyBottomInsetToPadding(this, mEmptyState);
 
         mToolbar.setNavigationOnClickListener(view -> finish());
+        mClearHistoryButton.setOnClickListener(view -> clearRecentSearches());
 
         mAdapter = new SearchResultsAdapter(new SearchResultClickListener() {
             @Override
@@ -113,6 +132,7 @@ public class SearchNotesActivity extends AppCompatActivity {
     private void bindInitialQuery() {
         CharSequence initialQuery = getIntent().getStringExtra(SearchManager.QUERY);
         if (TextUtils.isEmpty(initialQuery)) {
+            renderRecentSearches();
             renderIdleState();
             mSearchInput.requestFocus();
             InputMethodManager inputMethodManager = getSystemService(InputMethodManager.class);
@@ -145,6 +165,7 @@ public class SearchNotesActivity extends AppCompatActivity {
         if (TextUtils.isEmpty(query)) {
             mSearchRequestVersion++;
             mAdapter.submit(query, new ArrayList<SearchResultItem>());
+            renderRecentSearches();
             renderIdleState();
             return;
         }
@@ -215,6 +236,7 @@ public class SearchNotesActivity extends AppCompatActivity {
     }
 
     private void renderSearchResults(String query, List<SearchResultItem> results) {
+        renderRecentSearches();
         mAdapter.submit(query, results);
         mResultsSummary.setText(getResources().getQuantityString(
                 R.plurals.search_results_title,
@@ -232,16 +254,84 @@ public class SearchNotesActivity extends AppCompatActivity {
 
         mEmptyState.setVisibility(View.GONE);
         mResultsList.setVisibility(View.VISIBLE);
+        saveRecentSearch(query);
     }
 
     private void openResult(SearchResultItem item) {
         String query = mSearchInput.getText() == null ? "" : mSearchInput.getText().toString().trim();
+        saveRecentSearch(query);
         Intent intent = new Intent(this, NoteEditActivity.class);
         intent.setAction(Intent.ACTION_VIEW);
         intent.putExtra(Intent.EXTRA_UID, item.noteId);
         intent.putExtra(SearchManager.EXTRA_DATA_KEY, String.valueOf(item.noteId));
         intent.putExtra(SearchManager.USER_QUERY, query);
         startActivity(intent);
+    }
+
+    private void renderRecentSearches() {
+        List<String> searches = getRecentSearches();
+        mRecentSearchesGroup.removeAllViews();
+        boolean hasHistory = !searches.isEmpty();
+        mHistorySection.setVisibility(hasHistory ? View.VISIBLE : View.GONE);
+        mClearHistoryButton.setVisibility(hasHistory ? View.VISIBLE : View.GONE);
+        if (!hasHistory) {
+            return;
+        }
+        for (String search : searches) {
+            Chip chip = new Chip(this);
+            chip.setText(search);
+            chip.setCheckable(false);
+            chip.setClickable(true);
+            chip.setEnsureMinTouchTargetSize(true);
+            chip.setOnClickListener(view -> applyRecentSearch(search));
+            mRecentSearchesGroup.addView(chip);
+        }
+    }
+
+    private void applyRecentSearch(String search) {
+        mSearchInput.setText(search);
+        mSearchInput.setSelection(search.length());
+    }
+
+    private void clearRecentSearches() {
+        mPreferences.edit().remove(PREF_RECENT_SEARCHES).apply();
+        renderRecentSearches();
+    }
+
+    private void saveRecentSearch(String query) {
+        String normalizedQuery = query == null ? "" : query.trim();
+        if (TextUtils.isEmpty(normalizedQuery)) {
+            return;
+        }
+        ArrayList<String> updatedSearches = new ArrayList<String>(getRecentSearches());
+        updatedSearches.remove(normalizedQuery);
+        updatedSearches.add(0, normalizedQuery);
+        if (updatedSearches.size() > MAX_HISTORY_SIZE) {
+            updatedSearches = new ArrayList<String>(updatedSearches.subList(0, MAX_HISTORY_SIZE));
+        }
+        StringBuilder serialized = new StringBuilder();
+        for (int index = 0; index < updatedSearches.size(); index++) {
+            if (index > 0) {
+                serialized.append(HISTORY_SEPARATOR);
+            }
+            serialized.append(updatedSearches.get(index));
+        }
+        mPreferences.edit().putString(PREF_RECENT_SEARCHES, serialized.toString()).apply();
+    }
+
+    private List<String> getRecentSearches() {
+        String raw = mPreferences.getString(PREF_RECENT_SEARCHES, "");
+        ArrayList<String> searches = new ArrayList<String>();
+        if (TextUtils.isEmpty(raw)) {
+            return searches;
+        }
+        String[] parts = raw.split(HISTORY_SEPARATOR);
+        for (String part : parts) {
+            if (!TextUtils.isEmpty(part)) {
+                searches.add(part);
+            }
+        }
+        return searches;
     }
 
     private static String formatSnippet(String rawSnippet) {
