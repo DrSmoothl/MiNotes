@@ -208,71 +208,79 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private boolean initActivityState(Intent intent) {
-        /**
-         * If the user specified the {@link Intent#ACTION_VIEW} but not provided with id,
-         * then jump to the NotesListActivity
-         */
-        if (TextUtils.equals(Intent.ACTION_VIEW, intent.getAction())) {
-            long noteId = intent.getLongExtra(Intent.EXTRA_UID, 0);
-            String userQuery = "";
-
-            /**
-             * Starting from the searched result
-             */
-            if (intent.hasExtra(SearchManager.EXTRA_DATA_KEY)) {
-                noteId = Long.parseLong(intent.getStringExtra(SearchManager.EXTRA_DATA_KEY));
-                userQuery = intent.getStringExtra(SearchManager.USER_QUERY);
-            }
-
-            if (!mNoteEditViewModel.openExisting(noteId, userQuery)) {
-                Intent jump = new Intent(this, NotesListActivity.class);
-                startActivity(jump);
-                showToast(R.string.error_note_not_exist);
-                finish();
-                return false;
-            }
-            syncSessionFromViewModel();
-            if (mNoteSession == null) {
-                Intent jump = new Intent(this, NotesListActivity.class);
-                startActivity(jump);
-                showToast(R.string.error_note_not_exist);
-                finish();
-                return false;
-            }
-            getWindow().setSoftInputMode(
-                    WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
-        } else if(TextUtils.equals(Intent.ACTION_INSERT_OR_EDIT, intent.getAction())) {
-            // New note
-            long folderId = intent.getLongExtra(Notes.INTENT_EXTRA_FOLDER_ID, 0);
-            int widgetId = intent.getIntExtra(Notes.INTENT_EXTRA_WIDGET_ID,
-                    AppWidgetManager.INVALID_APPWIDGET_ID);
-            int widgetType = intent.getIntExtra(Notes.INTENT_EXTRA_WIDGET_TYPE,
-                    Notes.TYPE_WIDGET_INVALIDE);
-            int bgResId = intent.getIntExtra(Notes.INTENT_EXTRA_BACKGROUND_ID,
-                    ResourceParser.getDefaultBgId(this));
-
-            // Parse call-record note
-            String phoneNumber = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
-            long callDate = intent.getLongExtra(Notes.INTENT_EXTRA_CALL_DATE, 0);
-            if (callDate != 0 && phoneNumber != null) {
-                if (TextUtils.isEmpty(phoneNumber)) {
-                    Log.w(TAG, "The call record number is null");
-                }
-                mNoteEditViewModel.startForCallRecord(folderId, widgetId, widgetType,
-                        bgResId, phoneNumber, callDate);
-            } else {
-                mNoteEditViewModel.startNew(folderId, widgetId, widgetType, bgResId);
-            }
-            syncSessionFromViewModel();
-
-            getWindow().setSoftInputMode(
-            WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
-        } else {
+        NoteEditLaunchRequest request = buildLaunchRequest(intent);
+        if (!request.isValid()) {
             Log.e(TAG, "Intent not specified action, should not support");
             finish();
             return false;
         }
+        if (!mNoteEditViewModel.launch(request)) {
+            if (request.isExistingNoteRequest()) {
+                redirectToNotesList();
+                showToast(R.string.error_note_not_exist);
+            } else {
+                finish();
+            }
+            return false;
+        }
+        syncSessionFromViewModel();
+        if (mNoteSession == null) {
+            if (request.isExistingNoteRequest()) {
+                redirectToNotesList();
+                showToast(R.string.error_note_not_exist);
+            } else {
+                finish();
+            }
+            return false;
+        }
+        if (request.shouldHideKeyboard()) {
+            getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN);
+        } else if (request.shouldShowKeyboard()) {
+            getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+        }
         return true;
+    }
+
+    private NoteEditLaunchRequest buildLaunchRequest(Intent intent) {
+        if (intent == null) {
+            return NoteEditLaunchRequest.invalid();
+        }
+        if (TextUtils.equals(Intent.ACTION_VIEW, intent.getAction())) {
+            long noteId = intent.getLongExtra(Intent.EXTRA_UID, 0);
+            String userQuery = "";
+            if (intent.hasExtra(SearchManager.EXTRA_DATA_KEY)) {
+                String searchDataKey = intent.getStringExtra(SearchManager.EXTRA_DATA_KEY);
+                if (!TextUtils.isEmpty(searchDataKey)) {
+                    noteId = Long.parseLong(searchDataKey);
+                }
+                userQuery = intent.getStringExtra(SearchManager.USER_QUERY);
+            }
+            return NoteEditLaunchRequest.openExisting(noteId, userQuery);
+        }
+        if (TextUtils.equals(Intent.ACTION_INSERT_OR_EDIT, intent.getAction())) {
+            String phoneNumber = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER);
+            long callDate = intent.getLongExtra(Notes.INTENT_EXTRA_CALL_DATE, 0);
+            if (callDate != 0L && TextUtils.isEmpty(phoneNumber)) {
+                Log.w(TAG, "The call record number is null");
+            }
+            return NoteEditLaunchRequest.createOrEdit(
+                    intent.getLongExtra(Notes.INTENT_EXTRA_FOLDER_ID, 0),
+                    intent.getIntExtra(Notes.INTENT_EXTRA_WIDGET_ID,
+                            AppWidgetManager.INVALID_APPWIDGET_ID),
+                    intent.getIntExtra(Notes.INTENT_EXTRA_WIDGET_TYPE,
+                            Notes.TYPE_WIDGET_INVALIDE),
+                    intent.getIntExtra(Notes.INTENT_EXTRA_BACKGROUND_ID,
+                            ResourceParser.getDefaultBgId(this)),
+                    phoneNumber,
+                    callDate);
+        }
+        return NoteEditLaunchRequest.invalid();
+    }
+
+    private void redirectToNotesList() {
+        Intent jump = new Intent(this, NotesListActivity.class);
+        startActivity(jump);
+        finish();
     }
 
     @Override

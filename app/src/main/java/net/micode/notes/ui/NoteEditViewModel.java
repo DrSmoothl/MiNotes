@@ -84,6 +84,24 @@ public final class NoteEditViewModel extends ViewModel {
         return userQuery;
     }
 
+    public boolean launch(NoteEditLaunchRequest request) {
+        if (request == null || !request.isValid()) {
+            return false;
+        }
+        if (request.getAction() == NoteEditLaunchRequest.Action.OPEN_EXISTING) {
+            return openExisting(request.getNoteId(), request.getUserQuery());
+        }
+        if (request.hasCallRecordSource()) {
+            startForCallRecord(request.getFolderId(), request.getWidgetId(),
+                    request.getWidgetType(), request.getBackgroundColorId(),
+                    request.getPhoneNumber(), request.getCallDate());
+        } else {
+            startNew(request.getFolderId(), request.getWidgetId(), request.getWidgetType(),
+                    request.getBackgroundColorId());
+        }
+        return noteSession != null;
+    }
+
     public boolean openExisting(long noteId, String query) {
         this.userQuery = query == null ? "" : query;
         noteSession = startNoteEditorSessionUseCase.openExisting(noteId);

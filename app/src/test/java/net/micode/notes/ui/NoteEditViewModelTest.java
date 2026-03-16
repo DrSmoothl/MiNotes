@@ -43,6 +43,46 @@ public final class NoteEditViewModelTest {
     }
 
     @Test
+    public void launch_openExistingUsesLaunchRequestQuery() {
+        FakeNoteEditorSession session = new FakeNoteEditorSession();
+        FakeNoteEditorRepository repository = new FakeNoteEditorRepository(session);
+        NoteEditViewModel viewModel = new NoteEditViewModel(
+                new StartNoteEditorSessionUseCase(repository),
+                new DeleteNoteUseCase(repository),
+                new FakeReminderScheduler(),
+                new FakeWidgetNotifier());
+
+        boolean launched = viewModel.launch(NoteEditLaunchRequest.openExisting(42L, "needle"));
+
+        assertTrue(launched);
+        assertEquals(42L, viewModel.getNoteSession().getNoteId());
+        assertEquals("needle", viewModel.getUserQuery());
+        assertTrue(viewModel.getCurrentState().isExistingNote());
+    }
+
+    @Test
+    public void launch_createOrEditStartsCallRecordSessionWhenCallMetadataExists() {
+        FakeNoteEditorSession session = new FakeNoteEditorSession();
+        FakeNoteEditorRepository repository = new FakeNoteEditorRepository(session);
+        NoteEditViewModel viewModel = new NoteEditViewModel(
+                new StartNoteEditorSessionUseCase(repository),
+                new DeleteNoteUseCase(repository),
+                new FakeReminderScheduler(),
+                new FakeWidgetNotifier());
+
+        boolean launched = viewModel.launch(NoteEditLaunchRequest.createOrEdit(
+                7L, 9, Notes.TYPE_WIDGET_2X, 3, "10086", 12345L));
+
+        assertTrue(launched);
+        assertEquals(7L, viewModel.getNoteSession().getFolderId());
+        assertEquals(9, viewModel.getNoteSession().getWidgetId());
+        assertEquals(Notes.TYPE_WIDGET_2X, viewModel.getNoteSession().getWidgetType());
+        assertEquals(3, viewModel.getNoteSession().getBgColorId());
+        assertEquals("", viewModel.getUserQuery());
+        assertTrue(repository.createCallRecordSessionInvoked);
+    }
+
+    @Test
     public void markPendingActionHandled_clearsPendingAction() {
         FakeNoteEditorSession session = new FakeNoteEditorSession();
         session.folderId = 7L;
@@ -66,6 +106,7 @@ public final class NoteEditViewModelTest {
 
     private static final class FakeNoteEditorRepository implements NoteEditorRepository {
         private final FakeNoteEditorSession session;
+        private boolean createCallRecordSessionInvoked;
 
         private FakeNoteEditorRepository(FakeNoteEditorSession session) {
             this.session = session;
@@ -106,6 +147,7 @@ public final class NoteEditViewModelTest {
         @Override
         public NoteEditorSession createCallRecordSession(long folderId, int widgetId,
                 int widgetType, int defaultBgColorId, String phoneNumber, long callDate) {
+            createCallRecordSessionInvoked = true;
             return createSession(folderId, widgetId, widgetType, defaultBgColorId);
         }
 

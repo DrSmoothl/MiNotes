@@ -1,7 +1,5 @@
 package net.micode.notes.domain.usecase.editor;
 
-import android.text.TextUtils;
-
 import net.micode.notes.domain.model.NoteEditorSession;
 import net.micode.notes.domain.repository.NoteEditorRepository;
 
@@ -27,7 +25,7 @@ public final class StartNoteEditorSessionUseCase {
 
     public NoteEditorSession startForCallRecord(long folderId, int widgetId, int widgetType,
             int defaultBgColorId, String phoneNumber, long callDate) {
-        if (TextUtils.isEmpty(phoneNumber) || callDate == 0) {
+        if (phoneNumber == null || phoneNumber.length() == 0 || callDate == 0) {
             return startNew(folderId, widgetId, widgetType, defaultBgColorId);
         }
         long existingId = noteEditorRepository.findCallRecordNoteId(phoneNumber, callDate);
