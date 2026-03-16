@@ -95,6 +95,19 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     public static final int NOTES_LISTVIEW_SCROLL_RATE = 30;
 
+    private static final class SelectedNotesSnapshot {
+        private final java.util.Set<Long> noteIds;
+        private final HashSet<AppWidgetAttribute> widgetAttributes;
+        private final int selectedCount;
+
+        private SelectedNotesSnapshot(java.util.Set<Long> noteIds,
+                HashSet<AppWidgetAttribute> widgetAttributes, int selectedCount) {
+            this.noteIds = noteIds;
+            this.widgetAttributes = widgetAttributes;
+            this.selectedCount = selectedCount;
+        }
+    }
+
     private NoteItemData mFocusNoteDataItem;
     private HashSet<AppWidgetAttribute> mPendingDeletedWidgets;
     private Dialog mFolderNameDialog;
@@ -258,6 +271,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void showFolderListMenu(final List<FolderDestination> folders) {
+        final SelectedNotesSnapshot selection = getSelectedNotesSnapshot();
         AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
         builder.setTitle(R.string.menu_title_select_folder);
         final String[] names = new String[folders.size()];
@@ -267,9 +281,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         builder.setItems(names, new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
-                mListViewModel.moveNotes(mNotesListAdapter.getSelectedItemIds(),
-                    folders.get(which).getId(), folders.get(which).getName(),
-                    mNotesListAdapter.getSelectedCount());
+                mListViewModel.moveNotes(selection.noteIds, folders.get(which).getId(),
+                    folders.get(which).getName(), selection.selectedCount);
             }
         });
         builder.show();
@@ -280,8 +293,14 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void batchDelete() {
-        mPendingDeletedWidgets = mNotesListAdapter.getSelectedWidget();
-        mListViewModel.deleteNotes(mNotesListAdapter.getSelectedItemIds());
+        SelectedNotesSnapshot selection = getSelectedNotesSnapshot();
+        mPendingDeletedWidgets = selection.widgetAttributes;
+        mListViewModel.deleteNotes(selection.noteIds);
+    }
+
+    private SelectedNotesSnapshot getSelectedNotesSnapshot() {
+        return new SelectedNotesSnapshot(mNotesListAdapter.getSelectedItemIds(),
+                mNotesListAdapter.getSelectedWidget(), mNotesListAdapter.getSelectedCount());
     }
 
     private void openNode(NoteItemData data) {

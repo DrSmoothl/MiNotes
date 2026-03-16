@@ -275,6 +275,10 @@ public final class NoteEditViewState {
         return checkListMode;
     }
 
+    public boolean isCheckListMode() {
+        return checkListMode == net.micode.notes.data.Notes.TextNote.MODE_CHECK_LIST;
+    }
+
     public String getContent() {
         return content;
     }
@@ -297,6 +301,18 @@ public final class NoteEditViewState {
 
     public boolean canToggleListMode() {
         return canToggleListMode;
+    }
+
+    public boolean shouldShowAddReminderAction() {
+        return !hasClockAlert;
+    }
+
+    public boolean shouldShowClearReminderAction() {
+        return hasClockAlert;
+    }
+
+    public boolean usesCallRecordMenu() {
+        return folderId == net.micode.notes.data.Notes.ID_CALL_RECORD_FOLDER;
     }
 
     public long getPendingActionId() {

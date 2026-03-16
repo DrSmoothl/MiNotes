@@ -99,7 +99,7 @@ public final class NotesListViewModelTest {
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
                 new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
                 new ExportNotesUseCase(new FakeBackupRepository()), null,
-                new ImmediateBackgroundTaskRunner());
+            BackgroundTaskRunner.immediate());
         NoteItemData note = new NoteItemData(new NoteListItem(3L, 0L, 0, 0L, false, 0L,
             0, Notes.ID_ROOT_FOLDER, "Draft", Notes.TYPE_NOTE, 0, 0, "", ""));
 
@@ -404,17 +404,6 @@ public final class NotesListViewModelTest {
         @Override
         public void execute(Runnable command) {
             command.run();
-        }
-    }
-
-    private static final class ImmediateBackgroundTaskRunner implements BackgroundTaskRunner {
-        @Override
-        public void execute(Runnable task) {
-            task.run();
-        }
-
-        @Override
-        public void shutdown() {
         }
     }
 

@@ -8,6 +8,19 @@ public interface BackgroundTaskRunner {
         return new ExecutorBackgroundTaskRunner(executor);
     }
 
+    static BackgroundTaskRunner immediate() {
+        return new BackgroundTaskRunner() {
+            @Override
+            public void execute(Runnable task) {
+                task.run();
+            }
+
+            @Override
+            public void shutdown() {
+            }
+        };
+    }
+
     static BackgroundTaskRunner singleThreaded() {
         return fromExecutor(Executors.newSingleThreadExecutor());
     }
