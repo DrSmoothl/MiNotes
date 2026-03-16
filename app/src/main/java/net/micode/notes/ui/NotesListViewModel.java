@@ -201,6 +201,15 @@ public final class NotesListViewModel extends ViewModel {
         viewStateFlow.setValue(currentState);
     }
 
+    public void requestDeleteNotesConfirmation(int selectedCount) {
+        if (selectedCount <= 0) {
+            return;
+        }
+        currentState = currentState.withDeleteNotesConfirmation(nextPendingActionId++,
+                selectedCount);
+        viewStateFlow.setValue(currentState);
+    }
+
     public void requestOpenExistingNote(long noteId) {
         currentState = currentState.withEditorNavigation(nextPendingActionId++, noteId, 0L,
                 false);
@@ -234,7 +243,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 if (folderManagementUseCase.folderNameExists(name)) {
@@ -259,7 +268,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 if (folderManagementUseCase.folderNameExists(name)) {
@@ -291,7 +300,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 List<WidgetBinding> bindings = new ArrayList<WidgetBinding>(
@@ -310,7 +319,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 List<FolderDestination> folders = folderManagementUseCase.getFolderDestinations(
@@ -328,7 +337,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 ExportedTextFile result = exportNotesUseCase.exportToText();
@@ -347,7 +356,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 boolean moved = folderManagementUseCase.moveNotes(noteIds, folderId);
@@ -366,7 +375,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         final NotesListViewState stateSnapshot = currentState;
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 boolean deleted = deleteNotesUseCase.delete(noteIds);
@@ -396,7 +405,7 @@ public final class NotesListViewModel extends ViewModel {
 
     private void loadState(final long folderId, final NotesListViewState.ScreenMode mode,
             final String folderName) {
-        backgroundExecutor.execute(new Runnable() {
+        runInBackground(new Runnable() {
             @Override
             public void run() {
                 List<NoteItemData> uiItems = loadItems(folderId);
@@ -409,6 +418,10 @@ public final class NotesListViewModel extends ViewModel {
 
     private boolean hasUserFolders() {
         return folderManagementUseCase != null && folderManagementUseCase.getUserFolderCount() > 0;
+    }
+
+    private void runInBackground(Runnable task) {
+        backgroundExecutor.execute(task);
     }
 
     private List<NoteItemData> loadItems(long folderId) {

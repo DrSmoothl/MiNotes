@@ -16,6 +16,7 @@ public final class NotesListViewState {
         OPEN_NOTE_EDITOR,
         SHOW_FOLDER_NAME_DIALOG,
         CONFIRM_DELETE_FOLDER,
+        CONFIRM_DELETE_NOTES,
         SHOW_MOVE_DESTINATIONS,
         SHOW_EXPORT_RESULT,
         DELETE_COMPLETED,
@@ -256,6 +257,14 @@ public final class NotesListViewState {
                 Collections.<WidgetBinding>emptyList(), 0L, 0L, false, false, 0L, null,
                 folderId, folderName);
     }
+
+            public NotesListViewState withDeleteNotesConfirmation(long actionId, int selectedCount) {
+                return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
+                        hasUserFolders, actionId, PendingAction.CONFIRM_DELETE_NOTES,
+                        Collections.<FolderDestination>emptyList(), null, true, selectedCount, null,
+                        Collections.<WidgetBinding>emptyList(), 0L, 0L, false, false, 0L, null,
+                        0L, null);
+            }
 
     public NotesListViewState withoutPendingAction() {
         return new NotesListViewState(currentFolderId, mode, currentFolderName, items,

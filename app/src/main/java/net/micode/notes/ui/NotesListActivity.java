@@ -204,19 +204,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
             switch (item.getItemId()) {
                 case R.id.delete:
-                    AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
-                    builder.setTitle(getString(R.string.alert_title_delete));
-                    builder.setIcon(android.R.drawable.ic_dialog_alert);
-                    builder.setMessage(getString(R.string.alert_message_delete_notes,
-                            mNotesListAdapter.getSelectedCount()));
-                    builder.setPositiveButton(android.R.string.ok,
-                            new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    batchDelete();
-                                }
-                            });
-                    builder.setNegativeButton(android.R.string.cancel, null);
-                    builder.show();
+                    mListViewModel.requestDeleteNotesConfirmation(
+                            mNotesListAdapter.getSelectedCount());
                     return true;
                 case R.id.move:
                     mListViewModel.requestMoveDestinations();
@@ -493,6 +482,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 mListViewModel.markPendingActionHandled(actionId);
                 showDeleteFolderConfirmation(state);
                 return;
+            case CONFIRM_DELETE_NOTES:
+                mListViewModel.markPendingActionHandled(actionId);
+                showDeleteNotesConfirmation(state.getPendingAffectedCount());
+                return;
             case SHOW_MOVE_DESTINATIONS:
                 mListViewModel.markPendingActionHandled(actionId);
                 if (state.getPendingFolderDestinations().isEmpty()) {
@@ -588,6 +581,21 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         mListViewModel.deleteFolder(state.getPendingDeleteFolderId());
+                    }
+                });
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
+    }
+
+    private void showDeleteNotesConfirmation(int selectedCount) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.alert_title_delete));
+        builder.setIcon(android.R.drawable.ic_dialog_alert);
+        builder.setMessage(getString(R.string.alert_message_delete_notes, selectedCount));
+        builder.setPositiveButton(android.R.string.ok,
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        batchDelete();
                     }
                 });
         builder.setNegativeButton(android.R.string.cancel, null);

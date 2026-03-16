@@ -215,6 +215,20 @@ public final class NotesListViewModelTest {
         }
 
     @Test
+    public void requestDeleteNotesConfirmation_publishesSelectionCount() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+                new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+                new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+
+        viewModel.requestDeleteNotesConfirmation(3);
+
+        assertEquals(NotesListViewState.PendingAction.CONFIRM_DELETE_NOTES,
+                viewModel.getCurrentState().getPendingAction());
+        assertEquals(3, viewModel.getCurrentState().getPendingAffectedCount());
+    }
+
+    @Test
     public void requestExport_publishesExportResultAction() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
