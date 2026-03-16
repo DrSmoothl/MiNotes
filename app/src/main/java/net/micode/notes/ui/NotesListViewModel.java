@@ -373,10 +373,7 @@ public final class NotesListViewModel extends ViewModel {
                 }
                 boolean renamed = folderManagementUseCase.renameFolder(folderId, name);
                 List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
-                NotesListViewState updatedState = new NotesListViewState(
-                        stateSnapshot.getCurrentFolderId(), stateSnapshot.getMode(),
-                        stateSnapshot.getCurrentFolderName(), items,
-                        hasUserFolders());
+                NotesListViewState updatedState = baseState(stateSnapshot, items);
                 if (renamed && folderId == stateSnapshot.getCurrentFolderId()) {
                     updatedState = updatedState.withCurrentFolderName(name);
                 }
@@ -500,8 +497,13 @@ public final class NotesListViewModel extends ViewModel {
             @Override
             public void run() {
                 List<NoteItemData> uiItems = loadItems(folderId);
-                currentState = new NotesListViewState(folderId, mode, folderName, uiItems,
-                        hasUserFolders());
+                currentState = NotesListViewState.newBuilder()
+                        .setCurrentFolderId(folderId)
+                        .setMode(mode)
+                        .setCurrentFolderName(folderName)
+                        .setItems(uiItems)
+                        .setHasUserFolders(hasUserFolders())
+                        .build();
                 viewStateFlow.setValue(currentState);
             }
         });
@@ -540,11 +542,10 @@ public final class NotesListViewModel extends ViewModel {
             List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
             boolean operationSucceeded, int affectedCount, String destinationFolderName,
             List<WidgetBinding> widgetBindings) {
-        currentState = new NotesListViewState(stateSnapshot.getCurrentFolderId(),
-                stateSnapshot.getMode(), stateSnapshot.getCurrentFolderName(), items,
-                hasUserFolders(), nextPendingActionId++, action, folderDestinations,
-                exportedFile, operationSucceeded, affectedCount, destinationFolderName,
-                widgetBindings, 0L, 0L, false, false, 0L, null, 0L, null);
+        currentState = baseState(stateSnapshot, items)
+            .withPendingAction(nextPendingActionId++, action, folderDestinations,
+                exportedFile, operationSucceeded, affectedCount,
+                destinationFolderName, widgetBindings);
         viewStateFlow.setValue(currentState);
     }
 
@@ -553,11 +554,18 @@ public final class NotesListViewModel extends ViewModel {
             List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
             boolean operationSucceeded, int affectedCount, String destinationFolderName,
             List<WidgetBinding> widgetBindings) {
-        currentState = new NotesListViewState(state.getCurrentFolderId(), state.getMode(),
-                state.getCurrentFolderName(), state.getItems(), hasUserFolders(),
-                nextPendingActionId++, action, folderDestinations, exportedFile,
-                operationSucceeded, affectedCount, destinationFolderName, widgetBindings,
-                0L, 0L, false, false, 0L, null, 0L, null);
+        currentState = baseState(state, state.getItems())
+            .withPendingAction(nextPendingActionId++, action, folderDestinations,
+                exportedFile, operationSucceeded, affectedCount,
+                destinationFolderName, widgetBindings);
         viewStateFlow.setValue(currentState);
     }
+
+        private NotesListViewState baseState(NotesListViewState state, List<NoteItemData> items) {
+        return state.buildUpon()
+            .setItems(items)
+            .setHasUserFolders(hasUserFolders())
+                    .clearPendingState()
+            .build();
+        }
 }

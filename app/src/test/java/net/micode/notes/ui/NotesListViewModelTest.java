@@ -373,6 +373,33 @@ public final class NotesListViewModelTest {
         assertFalse(viewModel.getCurrentState().hasUserFolders());
         }
 
+        @Test
+        public void markPendingActionHandled_preservesLoadedFolderState() {
+        FakeNoteRepository repository = new FakeNoteRepository(
+            Collections.singletonList(new NoteListItem(11L, 0L, 0, 0L,
+                false, 0L, 0, 9L, "Item", Notes.TYPE_NOTE, 0, 0, "", "")));
+        repository.userFolderCount = 1;
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData folder = new NoteItemData(new NoteListItem(9L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Work", Notes.TYPE_FOLDER, 0, 0, "", ""));
+
+        viewModel.openFolder(folder);
+        viewModel.requestOpenExistingNote(11L);
+
+        long handledActionId = viewModel.getCurrentState().getPendingActionId();
+        viewModel.markPendingActionHandled(handledActionId);
+
+        assertEquals(NotesListViewState.PendingAction.NONE,
+            viewModel.getCurrentState().getPendingAction());
+        assertEquals(9L, viewModel.getCurrentState().getCurrentFolderId());
+        assertEquals(NotesListViewState.ScreenMode.FOLDER, viewModel.getCurrentState().getMode());
+        assertEquals("Work", viewModel.getCurrentState().getCurrentFolderName());
+        assertEquals(1, viewModel.getCurrentState().getItemCount());
+        assertTrue(viewModel.getCurrentState().hasUserFolders());
+        }
+
     private static final class DirectExecutor implements Executor {
         @Override
         public void execute(Runnable command) {
