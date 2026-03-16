@@ -60,14 +60,6 @@
         <item name="android:textColorPrimary">@color/notes_on_surface</item>
     </style>
 
-    <style name="ThemeOverlay.Notes.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
-        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.Material3.BodyMedium</item>
-        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.Material3.TitleLarge</item>
-        <item name="android:windowMinWidthMajor">88%</item>
-        <item name="android:windowMinWidthMinor">88%</item>
-        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Material3.LargeComponent</item>
-    </style>
-
     <style name="Widget.Notes.PopupMenu" parent="Widget.AppCompat.PopupMenu.Overflow">
         <item name="android:popupBackground">@drawable/notes_popup_menu_background</item>
         <item name="android:itemTextAppearance">@style/TextAppearance.Notes.PopupMenu.Item</item>

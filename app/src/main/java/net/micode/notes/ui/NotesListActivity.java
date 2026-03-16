@@ -363,8 +363,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private void showCreateOrModifyFolderDialog(final boolean create, final long folderId,
             String initialName) {
-        final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this,
-            R.style.ThemeOverlay_Notes_MaterialAlertDialog);
+        final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_text, null);
         final EditText etName = (EditText) view.findViewById(R.id.et_foler_name);
         mFolderNameEditText = etName;
@@ -705,8 +704,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         if (result == null) {
             return;
         }
-        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this,
-                R.style.ThemeOverlay_Notes_MaterialAlertDialog);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         if (result.getState() == ExportedTextFile.ExportState.STORAGE_UNAVAILABLE) {
             builder.setTitle(getString(R.string.failed_sdcard_export));
             builder.setMessage(getString(R.string.error_sdcard_unmounted));
