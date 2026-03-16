@@ -172,6 +172,41 @@ public final class NotesListViewModel extends ViewModel {
         }
     }
 
+    public void requestCreateNewNote() {
+        currentState = currentState.withEditorNavigation(nextPendingActionId++, 0L,
+                currentState.getCurrentFolderId(), true);
+        viewStateFlow.setValue(currentState);
+    }
+
+    public void requestCreateFolderDialog() {
+        currentState = currentState.withFolderNameDialog(nextPendingActionId++, true, 0L, null);
+        viewStateFlow.setValue(currentState);
+    }
+
+    public void requestRenameFolderDialog(NoteItemData item) {
+        if (item == null) {
+            return;
+        }
+        currentState = currentState.withFolderNameDialog(nextPendingActionId++, false,
+                item.getId(), item.getSnippet());
+        viewStateFlow.setValue(currentState);
+    }
+
+    public void requestDeleteFolderConfirmation(NoteItemData item) {
+        if (item == null) {
+            return;
+        }
+        currentState = currentState.withDeleteFolderConfirmation(nextPendingActionId++,
+                item.getId(), item.getSnippet());
+        viewStateFlow.setValue(currentState);
+    }
+
+    public void requestOpenExistingNote(long noteId) {
+        currentState = currentState.withEditorNavigation(nextPendingActionId++, noteId, 0L,
+                false);
+        viewStateFlow.setValue(currentState);
+    }
+
     public void refresh() {
         loadState(currentState.getCurrentFolderId(), currentState.getMode(),
                 currentState.getCurrentFolderName());
@@ -405,7 +440,7 @@ public final class NotesListViewModel extends ViewModel {
                 stateSnapshot.getMode(), stateSnapshot.getCurrentFolderName(), items,
                 hasUserFolders(), nextPendingActionId++, action, folderDestinations,
                 exportedFile, operationSucceeded, affectedCount, destinationFolderName,
-                widgetBindings);
+                widgetBindings, 0L, 0L, false, false, 0L, null, 0L, null);
         viewStateFlow.setValue(currentState);
     }
 
@@ -417,7 +452,8 @@ public final class NotesListViewModel extends ViewModel {
         currentState = new NotesListViewState(state.getCurrentFolderId(), state.getMode(),
                 state.getCurrentFolderName(), state.getItems(), hasUserFolders(),
                 nextPendingActionId++, action, folderDestinations, exportedFile,
-                operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
+                operationSucceeded, affectedCount, destinationFolderName, widgetBindings,
+                0L, 0L, false, false, 0L, null, 0L, null);
         viewStateFlow.setValue(currentState);
     }
 }

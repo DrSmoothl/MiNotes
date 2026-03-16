@@ -278,11 +278,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void createNewNote() {
-        Intent intent = new Intent(this, NoteEditActivity.class);
-        intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
-        intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID,
-            mListViewModel.getCurrentState().getCurrentFolderId());
-        mNoteEditorLauncher.launch(intent);
+        mListViewModel.requestCreateNewNote();
     }
 
     private void batchDelete() {
@@ -291,10 +287,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void openNode(NoteItemData data) {
-        Intent intent = new Intent(this, NoteEditActivity.class);
-        intent.setAction(Intent.ACTION_VIEW);
-        intent.putExtra(Intent.EXTRA_UID, data.getId());
-        mNoteEditorLauncher.launch(intent);
+        mListViewModel.requestOpenExistingNote(data.getId());
     }
 
     private void openFolder(NoteItemData data) {
@@ -330,18 +323,19 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         inputMethodManager.hideSoftInputFromWindow(view.getWindowToken(), 0);
     }
 
-    private void showCreateOrModifyFolderDialog(final boolean create) {
+    private void showCreateOrModifyFolderDialog(final boolean create, final long folderId,
+            String initialName) {
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_text, null);
         final EditText etName = (EditText) view.findViewById(R.id.et_foler_name);
         mFolderNameEditText = etName;
         showSoftInput(etName);
         if (!create) {
-            if (mFocusNoteDataItem != null) {
-                etName.setText(mFocusNoteDataItem.getSnippet());
+            if (!TextUtils.isEmpty(initialName)) {
+                etName.setText(initialName);
                 builder.setTitle(getString(R.string.menu_folder_change_name));
             } else {
-                Log.e(TAG, "The long click data item is null");
+                Log.e(TAG, "Missing folder dialog initial name");
                 return;
             }
         } else {
@@ -366,7 +360,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 String name = etName.getText().toString();
                 if (!create) {
                     if (!TextUtils.isEmpty(name)) {
-                        mListViewModel.renameFolder(mFocusNoteDataItem.getId(), name);
+                        mListViewModel.renameFolder(folderId, name);
                     }
                 } else if (!TextUtils.isEmpty(name)) {
                     mListViewModel.createFolder(name);
@@ -432,7 +426,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.menu_new_folder: {
-                showCreateOrModifyFolderDialog(true);
+                mListViewModel.requestCreateFolderDialog();
                 break;
             }
             case R.id.menu_export_text: {
@@ -484,6 +478,20 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             case INTRODUCTION_INIT_FAILED:
                 mListViewModel.markPendingActionHandled(actionId);
                 Log.e(TAG, "Initialize introduction note error");
+                return;
+            case OPEN_NOTE_EDITOR:
+                mListViewModel.markPendingActionHandled(actionId);
+                launchNoteEditor(state);
+                return;
+            case SHOW_FOLDER_NAME_DIALOG:
+                mListViewModel.markPendingActionHandled(actionId);
+                showCreateOrModifyFolderDialog(state.isPendingFolderDialogCreateMode(),
+                        state.getPendingFolderDialogFolderId(),
+                        state.getPendingFolderDialogInitialName());
+                return;
+            case CONFIRM_DELETE_FOLDER:
+                mListViewModel.markPendingActionHandled(actionId);
+                showDeleteFolderConfirmation(state);
                 return;
             case SHOW_MOVE_DESTINATIONS:
                 mListViewModel.markPendingActionHandled(actionId);
@@ -557,6 +565,33 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             default:
                 return;
         }
+    }
+
+    private void launchNoteEditor(NotesListViewState state) {
+        Intent intent = new Intent(this, NoteEditActivity.class);
+        if (state.isPendingEditorCreateMode()) {
+            intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
+            intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, state.getPendingEditorFolderId());
+        } else {
+            intent.setAction(Intent.ACTION_VIEW);
+            intent.putExtra(Intent.EXTRA_UID, state.getPendingEditorNoteId());
+        }
+        mNoteEditorLauncher.launch(intent);
+    }
+
+    private void showDeleteFolderConfirmation(NotesListViewState state) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(getString(R.string.alert_title_delete));
+        builder.setIcon(android.R.drawable.ic_dialog_alert);
+        builder.setMessage(getString(R.string.alert_message_delete_folder));
+        builder.setPositiveButton(android.R.string.ok,
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        mListViewModel.deleteFolder(state.getPendingDeleteFolderId());
+                    }
+                });
+        builder.setNegativeButton(android.R.string.cancel, null);
+        builder.show();
     }
 
     private void refreshPendingDeletedWidgets() {
@@ -665,22 +700,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                         openFolder(item);
                         return true;
                     case MENU_FOLDER_DELETE:
-                        AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
-                        builder.setTitle(getString(R.string.alert_title_delete));
-                        builder.setIcon(android.R.drawable.ic_dialog_alert);
-                        builder.setMessage(getString(R.string.alert_message_delete_folder));
-                        builder.setPositiveButton(android.R.string.ok,
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        mListViewModel.deleteFolder(item.getId());
-                                    }
-                                });
-                        builder.setNegativeButton(android.R.string.cancel, null);
-                        builder.show();
+                        mListViewModel.requestDeleteFolderConfirmation(item);
                         return true;
                     case MENU_FOLDER_CHANGE_NAME:
-                        mFocusNoteDataItem = item;
-                        showCreateOrModifyFolderDialog(false);
+                        mListViewModel.requestRenameFolderDialog(item);
                         return true;
                     default:
                         return false;

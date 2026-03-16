@@ -131,6 +131,89 @@ public final class NotesListViewModelTest {
             viewModel.resolveItemClickAction(note));
         }
 
+        @Test
+        public void requestCreateNewNote_publishesEditorNavigationForCurrentFolder() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData currentFolder = new NoteItemData(new NoteListItem(9L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Work", Notes.TYPE_FOLDER, 0, 0, "", ""));
+
+        viewModel.openFolder(currentFolder);
+        viewModel.requestCreateNewNote();
+
+        assertEquals(NotesListViewState.PendingAction.OPEN_NOTE_EDITOR,
+            viewModel.getCurrentState().getPendingAction());
+        assertTrue(viewModel.getCurrentState().isPendingEditorCreateMode());
+        assertEquals(9L, viewModel.getCurrentState().getPendingEditorFolderId());
+        }
+
+        @Test
+        public void requestOpenExistingNote_publishesEditorNavigationForNoteId() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+
+        viewModel.requestOpenExistingNote(42L);
+
+        assertEquals(NotesListViewState.PendingAction.OPEN_NOTE_EDITOR,
+            viewModel.getCurrentState().getPendingAction());
+        assertFalse(viewModel.getCurrentState().isPendingEditorCreateMode());
+        assertEquals(42L, viewModel.getCurrentState().getPendingEditorNoteId());
+        }
+
+        @Test
+        public void requestCreateFolderDialog_publishesDialogRequest() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+
+        viewModel.requestCreateFolderDialog();
+
+        assertEquals(NotesListViewState.PendingAction.SHOW_FOLDER_NAME_DIALOG,
+            viewModel.getCurrentState().getPendingAction());
+        assertTrue(viewModel.getCurrentState().isPendingFolderDialogCreateMode());
+        assertEquals(0L, viewModel.getCurrentState().getPendingFolderDialogFolderId());
+        }
+
+        @Test
+        public void requestRenameFolderDialog_publishesDialogRequestWithInitialName() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData folder = new NoteItemData(new NoteListItem(12L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Archive", Notes.TYPE_FOLDER, 0, 0, "", ""));
+
+        viewModel.requestRenameFolderDialog(folder);
+
+        assertEquals(NotesListViewState.PendingAction.SHOW_FOLDER_NAME_DIALOG,
+            viewModel.getCurrentState().getPendingAction());
+        assertFalse(viewModel.getCurrentState().isPendingFolderDialogCreateMode());
+        assertEquals(12L, viewModel.getCurrentState().getPendingFolderDialogFolderId());
+        assertEquals("Archive", viewModel.getCurrentState().getPendingFolderDialogInitialName());
+        }
+
+        @Test
+        public void requestDeleteFolderConfirmation_publishesConfirmationAction() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData folder = new NoteItemData(new NoteListItem(13L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Projects", Notes.TYPE_FOLDER, 0, 0, "", ""));
+
+        viewModel.requestDeleteFolderConfirmation(folder);
+
+        assertEquals(NotesListViewState.PendingAction.CONFIRM_DELETE_FOLDER,
+            viewModel.getCurrentState().getPendingAction());
+        assertEquals(13L, viewModel.getCurrentState().getPendingDeleteFolderId());
+        assertEquals("Projects", viewModel.getCurrentState().getPendingDeleteFolderName());
+        }
+
     @Test
     public void requestExport_publishesExportResultAction() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());

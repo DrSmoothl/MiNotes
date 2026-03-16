@@ -13,6 +13,9 @@ public final class NotesListViewState {
     public enum PendingAction {
         NONE,
         INTRODUCTION_INIT_FAILED,
+        OPEN_NOTE_EDITOR,
+        SHOW_FOLDER_NAME_DIALOG,
+        CONFIRM_DELETE_FOLDER,
         SHOW_MOVE_DESTINATIONS,
         SHOW_EXPORT_RESULT,
         DELETE_COMPLETED,
@@ -42,20 +45,30 @@ public final class NotesListViewState {
     private final int pendingAffectedCount;
     private final String pendingDestinationFolderName;
     private final List<WidgetBinding> pendingWidgetBindings;
+    private final long pendingEditorNoteId;
+    private final long pendingEditorFolderId;
+    private final boolean pendingEditorCreateMode;
+    private final boolean pendingFolderDialogCreateMode;
+    private final long pendingFolderDialogFolderId;
+    private final String pendingFolderDialogInitialName;
+        private final long pendingDeleteFolderId;
+        private final String pendingDeleteFolderName;
 
     public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
             List<NoteItemData> items) {
         this(currentFolderId, mode, currentFolderName, items, false, 0L, PendingAction.NONE,
                 Collections.<FolderDestination>emptyList(), null, false, 0, null,
-                Collections.<WidgetBinding>emptyList());
+            Collections.<WidgetBinding>emptyList(), 0L, 0L, false, false, 0L, null,
+            0L, null);
     }
 
-        public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
+    public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
             List<NoteItemData> items, boolean hasUserFolders) {
         this(currentFolderId, mode, currentFolderName, items, hasUserFolders, 0L,
-            PendingAction.NONE, Collections.<FolderDestination>emptyList(), null, false, 0,
-            null, Collections.<WidgetBinding>emptyList());
-        }
+                PendingAction.NONE, Collections.<FolderDestination>emptyList(), null, false, 0,
+            null, Collections.<WidgetBinding>emptyList(), 0L, 0L, false, false, 0L, null,
+            0L, null);
+    }
 
     public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
             List<NoteItemData> items, boolean hasUserFolders, long pendingActionId,
@@ -63,7 +76,11 @@ public final class NotesListViewState {
             List<FolderDestination> pendingFolderDestinations,
             ExportedTextFile pendingExportedFile, boolean pendingOperationSucceeded,
             int pendingAffectedCount, String pendingDestinationFolderName,
-            List<WidgetBinding> pendingWidgetBindings) {
+            List<WidgetBinding> pendingWidgetBindings, long pendingEditorNoteId,
+            long pendingEditorFolderId, boolean pendingEditorCreateMode,
+            boolean pendingFolderDialogCreateMode, long pendingFolderDialogFolderId,
+            String pendingFolderDialogInitialName, long pendingDeleteFolderId,
+            String pendingDeleteFolderName) {
         this.currentFolderId = currentFolderId;
         this.mode = mode;
         this.currentFolderName = currentFolderName;
@@ -78,7 +95,15 @@ public final class NotesListViewState {
         this.pendingAffectedCount = pendingAffectedCount;
         this.pendingDestinationFolderName = pendingDestinationFolderName;
         this.pendingWidgetBindings = Collections.unmodifiableList(
-            new ArrayList<WidgetBinding>(pendingWidgetBindings));
+                new ArrayList<WidgetBinding>(pendingWidgetBindings));
+        this.pendingEditorNoteId = pendingEditorNoteId;
+        this.pendingEditorFolderId = pendingEditorFolderId;
+        this.pendingEditorCreateMode = pendingEditorCreateMode;
+        this.pendingFolderDialogCreateMode = pendingFolderDialogCreateMode;
+        this.pendingFolderDialogFolderId = pendingFolderDialogFolderId;
+        this.pendingFolderDialogInitialName = pendingFolderDialogInitialName;
+        this.pendingDeleteFolderId = pendingDeleteFolderId;
+        this.pendingDeleteFolderName = pendingDeleteFolderName;
     }
 
     public static NotesListViewState root(List<NoteItemData> items) {
@@ -141,6 +166,38 @@ public final class NotesListViewState {
         return pendingWidgetBindings;
     }
 
+    public long getPendingEditorNoteId() {
+        return pendingEditorNoteId;
+    }
+
+    public long getPendingEditorFolderId() {
+        return pendingEditorFolderId;
+    }
+
+    public boolean isPendingEditorCreateMode() {
+        return pendingEditorCreateMode;
+    }
+
+    public boolean isPendingFolderDialogCreateMode() {
+        return pendingFolderDialogCreateMode;
+    }
+
+    public long getPendingFolderDialogFolderId() {
+        return pendingFolderDialogFolderId;
+    }
+
+    public String getPendingFolderDialogInitialName() {
+        return pendingFolderDialogInitialName;
+    }
+
+    public long getPendingDeleteFolderId() {
+        return pendingDeleteFolderId;
+    }
+
+    public String getPendingDeleteFolderName() {
+        return pendingDeleteFolderName;
+    }
+
     public boolean isRootMode() {
         return mode == ScreenMode.ROOT;
     }
@@ -151,10 +208,13 @@ public final class NotesListViewState {
 
     public NotesListViewState withCurrentFolderName(String name) {
         return new NotesListViewState(currentFolderId, mode, name, items, hasUserFolders,
-            pendingActionId,
+                pendingActionId,
                 pendingAction, pendingFolderDestinations, pendingExportedFile,
                 pendingOperationSucceeded, pendingAffectedCount, pendingDestinationFolderName,
-                pendingWidgetBindings);
+                pendingWidgetBindings, pendingEditorNoteId, pendingEditorFolderId,
+                pendingEditorCreateMode, pendingFolderDialogCreateMode,
+                pendingFolderDialogFolderId, pendingFolderDialogInitialName,
+                pendingDeleteFolderId, pendingDeleteFolderName);
     }
 
     public NotesListViewState withPendingAction(long actionId, PendingAction action,
@@ -162,8 +222,39 @@ public final class NotesListViewState {
             boolean operationSucceeded, int affectedCount, String destinationFolderName,
             List<WidgetBinding> widgetBindings) {
         return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
-            hasUserFolders, actionId, action, folderDestinations, exportedFile,
-            operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
+                hasUserFolders, actionId, action, folderDestinations, exportedFile,
+                operationSucceeded, affectedCount, destinationFolderName, widgetBindings,
+                pendingEditorNoteId, pendingEditorFolderId, pendingEditorCreateMode,
+                pendingFolderDialogCreateMode, pendingFolderDialogFolderId,
+                pendingFolderDialogInitialName, pendingDeleteFolderId,
+                pendingDeleteFolderName);
+    }
+
+    public NotesListViewState withEditorNavigation(long actionId, long noteId, long folderId,
+            boolean createMode) {
+        return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
+                hasUserFolders, actionId, PendingAction.OPEN_NOTE_EDITOR,
+                Collections.<FolderDestination>emptyList(), null, true, 0, null,
+                Collections.<WidgetBinding>emptyList(), noteId, folderId, createMode,
+                false, 0L, null, 0L, null);
+    }
+
+    public NotesListViewState withFolderNameDialog(long actionId, boolean createMode,
+            long folderId, String initialName) {
+        return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
+                hasUserFolders, actionId, PendingAction.SHOW_FOLDER_NAME_DIALOG,
+                Collections.<FolderDestination>emptyList(), null, true, 0, null,
+                Collections.<WidgetBinding>emptyList(), 0L, 0L, false, createMode,
+                folderId, initialName, 0L, null);
+            }
+
+            public NotesListViewState withDeleteFolderConfirmation(long actionId, long folderId,
+                String folderName) {
+            return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
+                hasUserFolders, actionId, PendingAction.CONFIRM_DELETE_FOLDER,
+                Collections.<FolderDestination>emptyList(), null, true, 0, null,
+                Collections.<WidgetBinding>emptyList(), 0L, 0L, false, false, 0L, null,
+                folderId, folderName);
     }
 
     public NotesListViewState withoutPendingAction() {
