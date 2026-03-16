@@ -245,7 +245,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             redirectToNotesList();
             showToast(R.string.error_note_not_exist);
         } else {
-            finish();
+            finishEditor();
         }
         return false;
     }
@@ -288,8 +288,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private void redirectToNotesList() {
         Intent jump = new Intent(this, NotesListActivity.class);
-        startActivity(jump);
-        finish();
+        startActivityAndFinish(jump);
     }
 
     @Override
@@ -910,9 +909,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             return;
         }
         long actionId = state.getPendingActionId();
-        if (state.shouldSetResultOkAfterHandling()) {
-            setResult(RESULT_OK);
-        }
+        applyPendingResult(state);
         if (state.shouldOpenNewNoteAfterHandling()) {
             openPendingNewNote(actionId, state.getPendingActionFolderId());
             return;
@@ -992,12 +989,26 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         Intent intent = new Intent(this, NoteEditActivity.class);
         intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
         intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, folderId);
-        startActivity(intent);
-        finish();
+        startActivityAndFinish(intent);
     }
 
     private void closeFromPendingAction(long actionId) {
         mNoteEditViewModel.markPendingActionHandled(actionId);
+        finishEditor();
+    }
+
+    private void applyPendingResult(NoteEditViewState state) {
+        if (state.shouldSetResultOkAfterHandling()) {
+            setResult(RESULT_OK);
+        }
+    }
+
+    private void startActivityAndFinish(Intent intent) {
+        startActivity(intent);
+        finishEditor();
+    }
+
+    private void finishEditor() {
         finish();
     }
 

@@ -765,6 +765,17 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         menu.show();
     }
 
+    private boolean beginSelectionMode(View view, int position) {
+        ActionMode actionMode = startSupportActionMode(mModeCallBack);
+        if (actionMode == null) {
+            Log.e(TAG, "startActionMode fails");
+            return false;
+        }
+        mModeCallBack.toggleSelection(position);
+        view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        return true;
+    }
+
     @Override
     public void onItemClick(NoteItemData item, int position) {
         if (position == RecyclerView.NO_POSITION) {
@@ -800,13 +811,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         switch (mListViewModel.resolveItemLongClickAction(item,
                 mNotesListAdapter.isInChoiceMode())) {
             case START_SELECTION:
-                if (startSupportActionMode(mModeCallBack) != null) {
-                    mModeCallBack.toggleSelection(position);
-                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-                    return true;
-                }
-                Log.e(TAG, "startActionMode fails");
-                return false;
+                return beginSelectionMode(view, position);
             case SHOW_FOLDER_MENU:
                 showFolderMenu(view, item);
                 return true;
