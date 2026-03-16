@@ -104,6 +104,30 @@ public final class NoteEditViewModelTest {
         assertFalse(viewModel.getCurrentState().pendingActionSetsResultOk());
     }
 
+    @Test
+    public void refreshState_preservesUnHandledPendingAction() {
+        FakeNoteEditorSession session = new FakeNoteEditorSession();
+        session.folderId = 15L;
+        FakeNoteEditorRepository repository = new FakeNoteEditorRepository(session);
+        NoteEditViewModel viewModel = new NoteEditViewModel(
+                new StartNoteEditorSessionUseCase(repository),
+                new DeleteNoteUseCase(repository),
+                new FakeReminderScheduler(),
+                new FakeWidgetNotifier());
+
+        viewModel.startNew(15L, 0, Notes.TYPE_WIDGET_INVALIDE, 0);
+        viewModel.requestCreateNew("draft");
+        long actionId = viewModel.getCurrentState().getPendingActionId();
+
+        viewModel.refreshState();
+
+        assertEquals(actionId, viewModel.getCurrentState().getPendingActionId());
+        assertEquals(NoteEditViewState.PendingAction.OPEN_NEW_NOTE,
+                viewModel.getCurrentState().getPendingAction());
+        assertTrue(viewModel.getCurrentState().pendingActionSetsResultOk());
+        assertEquals(15L, viewModel.getCurrentState().getPendingActionFolderId());
+    }
+
     private static final class FakeNoteEditorRepository implements NoteEditorRepository {
         private final FakeNoteEditorSession session;
         private boolean createCallRecordSessionInvoked;

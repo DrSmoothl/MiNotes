@@ -53,17 +53,15 @@ public final class NoteEditViewModel extends ViewModel {
     private final DeleteNoteUseCase deleteNoteUseCase;
     private final ReminderScheduler reminderScheduler;
     private final WidgetNotifier widgetNotifier;
-        private final MutableStateFlow<NoteEditViewState> viewStateFlow =
+    private final MutableStateFlow<NoteEditViewState> viewStateFlow =
             StateFlowKt.MutableStateFlow((NoteEditViewState) null);
-        private final LiveData<NoteEditViewState> viewState =
+    private final LiveData<NoteEditViewState> viewState =
             FlowLiveDataConversions.asLiveData(viewStateFlow);
 
     private NoteEditorSession noteSession;
     private String userQuery = "";
     private long nextPendingActionId = 1L;
-    private NoteEditViewState.PendingAction pendingAction = NoteEditViewState.PendingAction.NONE;
-    private boolean pendingActionSetsResultOk;
-    private long pendingActionFolderId;
+    private NoteEditViewState currentState;
 
     public NoteEditViewModel(StartNoteEditorSessionUseCase startNoteEditorSessionUseCase,
             DeleteNoteUseCase deleteNoteUseCase,
@@ -84,7 +82,7 @@ public final class NoteEditViewModel extends ViewModel {
     }
 
     public NoteEditViewState getCurrentState() {
-        return viewStateFlow.getValue();
+        return currentState;
     }
 
     public NoteEditorSession getNoteSession() {
@@ -247,14 +245,12 @@ public final class NoteEditViewModel extends ViewModel {
     }
 
     public void markPendingActionHandled(long actionId) {
-        NoteEditViewState state = viewStateFlow.getValue();
+        NoteEditViewState state = currentState;
         if (state == null || state.getPendingActionId() != actionId) {
             return;
         }
-        pendingAction = NoteEditViewState.PendingAction.NONE;
-        pendingActionSetsResultOk = false;
-        pendingActionFolderId = 0L;
-        publishState();
+        currentState = state.withoutPendingAction();
+        viewStateFlow.setValue(currentState);
     }
 
     public void refreshState() {
@@ -279,39 +275,48 @@ public final class NoteEditViewModel extends ViewModel {
 
     private void dispatchPendingAction(NoteEditViewState.PendingAction action,
             boolean setResultOk, long folderId) {
-        pendingAction = action;
-        pendingActionSetsResultOk = setResultOk;
-        pendingActionFolderId = folderId;
-        nextPendingActionId++;
-        publishState();
+        if (currentState == null) {
+            publishState();
+        }
+        if (currentState == null) {
+            return;
+        }
+        currentState = currentState.withPendingAction(nextPendingActionId++, action,
+                setResultOk, folderId);
+        viewStateFlow.setValue(currentState);
     }
 
     private void publishState() {
         if (noteSession == null) {
+            currentState = null;
             viewStateFlow.setValue(null);
             return;
         }
         String content = noteSession.getContent();
         boolean hasContent = content != null && content.trim().length() > 0;
-        viewStateFlow.setValue(new NoteEditViewState(
-                noteSession.existsInDatabase(),
-                noteSession.getModifiedDate(),
-                noteSession.getBgColorId(),
-                noteSession.hasClockAlert(),
-                noteSession.getAlertDate(),
-                noteSession.getFolderId(),
-                noteSession.getWidgetId(),
-                noteSession.getWidgetType(),
-                noteSession.getCheckListMode(),
-                content,
-                hasContent,
-                hasContent,
-                noteSession.existsInDatabase() || hasContent,
-                hasContent,
-                true,
-                pendingAction == NoteEditViewState.PendingAction.NONE ? 0L : nextPendingActionId - 1,
-                pendingAction,
-                pendingActionSetsResultOk,
-                pendingActionFolderId));
+        NoteEditViewState.Builder builder = NoteEditViewState.newBuilder()
+                .setExistingNote(noteSession.existsInDatabase())
+                .setModifiedDate(noteSession.getModifiedDate())
+                .setBackgroundColorId(noteSession.getBgColorId())
+                .setHasClockAlert(noteSession.hasClockAlert())
+                .setAlertDate(noteSession.getAlertDate())
+                .setFolderId(noteSession.getFolderId())
+                .setWidgetId(noteSession.getWidgetId())
+                .setWidgetType(noteSession.getWidgetType())
+                .setCheckListMode(noteSession.getCheckListMode())
+                .setContent(content)
+                .setHasContent(hasContent)
+                .setCanShare(hasContent)
+                .setCanDelete(noteSession.existsInDatabase() || hasContent)
+                .setCanSetReminder(hasContent)
+                .setCanToggleListMode(true);
+        if (currentState != null && currentState.getPendingAction() != NoteEditViewState.PendingAction.NONE) {
+            builder.setPendingActionId(currentState.getPendingActionId())
+                    .setPendingAction(currentState.getPendingAction())
+                    .setPendingActionSetsResultOk(currentState.pendingActionSetsResultOk())
+                    .setPendingActionFolderId(currentState.getPendingActionFolderId());
+        }
+        currentState = builder.build();
+        viewStateFlow.setValue(currentState);
     }
 }
