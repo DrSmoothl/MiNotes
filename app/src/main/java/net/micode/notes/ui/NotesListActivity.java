@@ -179,21 +179,16 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
             getMenuInflater().inflate(R.menu.note_list_options, menu);
             mMoveMenu = menu.findItem(R.id.move);
-            NotesListViewModel.SelectionUiState selectionUiState = getSelectionUiState();
-            if (!selectionUiState.shouldShowMoveAction()) {
-                mMoveMenu.setVisible(false);
-            } else {
-                mMoveMenu.setVisible(true);
-            }
+            renderMoveActionVisibility(getSelectionUiState());
             mActionMode = mode;
-            mNotesListAdapter.setChoiceMode(true);
-            mAddNewNote.setVisibility(View.GONE);
-            updateMenu(mode, menu);
+            enterSelectionMode();
+            renderActionMode(mode, menu, getSelectionUiState());
             return true;
         }
 
-        private void updateMenu(ActionMode mode, Menu menu) {
-            NotesListViewModel.SelectionUiState selectionUiState = getSelectionUiState();
+        private void renderActionMode(ActionMode mode, Menu menu,
+                NotesListViewModel.SelectionUiState selectionUiState) {
+            renderMoveActionVisibility(selectionUiState);
             String format = getResources().getString(R.string.menu_select_title,
                 selectionUiState.getSelectedCount());
             mode.setTitle(format);
@@ -205,7 +200,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
 
         public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
-            updateMenu(mode, menu);
+            renderActionMode(mode, menu, getSelectionUiState());
             return true;
         }
 
@@ -227,7 +222,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                     return true;
                 case R.id.action_select_all:
                     mNotesListAdapter.selectAll(selectionUiState.shouldSelectAllOnToggle());
-                    updateMenu(mode, mode.getMenu());
+                    renderSelectionState();
                     return true;
                 default:
                     return false;
@@ -235,8 +230,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
 
         public void onDestroyActionMode(ActionMode mode) {
-            mNotesListAdapter.setChoiceMode(false);
-            mAddNewNote.setVisibility(View.VISIBLE);
+            exitSelectionMode();
             mActionMode = null;
         }
 
@@ -255,8 +249,31 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             if (selectionUiState.shouldFinishActionMode()) {
                 finishActionMode();
             } else {
-                updateMenu(mActionMode, mActionMode.getMenu());
+                renderActionMode(mActionMode, mActionMode.getMenu(), selectionUiState);
             }
+        }
+
+        private void renderSelectionState() {
+            if (mActionMode == null) {
+                return;
+            }
+            renderActionMode(mActionMode, mActionMode.getMenu(), getSelectionUiState());
+        }
+
+        private void renderMoveActionVisibility(NotesListViewModel.SelectionUiState selectionUiState) {
+            if (mMoveMenu != null) {
+                mMoveMenu.setVisible(selectionUiState.shouldShowMoveAction());
+            }
+        }
+
+        private void enterSelectionMode() {
+            mNotesListAdapter.setChoiceMode(true);
+            mAddNewNote.setVisibility(View.GONE);
+        }
+
+        private void exitSelectionMode() {
+            mNotesListAdapter.setChoiceMode(false);
+            mAddNewNote.setVisibility(View.VISIBLE);
         }
 
         private NotesListViewModel.SelectionUiState getSelectionUiState() {

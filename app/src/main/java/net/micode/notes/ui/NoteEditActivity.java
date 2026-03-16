@@ -425,8 +425,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void handleBackNavigation() {
-        EditorContentSnapshot contentSnapshot = collectWorkingText();
-        mNoteEditViewModel.requestClose(contentSnapshot.text);
+        mNoteEditViewModel.requestClose(pushCurrentEditorContent().text);
         syncSessionFromViewModel();
     }
 
@@ -597,9 +596,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         mFontSizeId = fontSizeId;
         mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
         NoteEditViewState state = mNoteEditViewModel.getCurrentState();
-        if (state != null && state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
-            EditorContentSnapshot contentSnapshot = collectWorkingText();
-            renderCheckListDocument(CheckListDocument.fromText(contentSnapshot.text), null);
+        if (state != null && state.isCheckListMode()) {
+            renderCheckListDocument(CheckListDocument.fromText(pushCurrentEditorContent().text), null);
         } else {
             mNoteEditor.setTextAppearance(
                     TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
@@ -610,11 +608,9 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         DateTimePickerDialog d = new DateTimePickerDialog(this, System.currentTimeMillis());
         d.setOnDateTimeSetListener(new OnDateTimeSetListener() {
             public void OnDateTimeSet(AlertDialog dialog, long date) {
-                EditorContentSnapshot reminderSnapshot = collectWorkingText();
-                if (!mNoteEditViewModel.applyReminder(reminderSnapshot.text, date, true)) {
+                if (!applyReminderFromCurrentContent(date, true)) {
                     showToast(R.string.error_note_empty_for_clock);
                 }
-                syncSessionFromViewModel();
             }
         });
         d.show();
@@ -632,8 +628,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void createNewNote() {
-        EditorContentSnapshot contentSnapshot = collectWorkingText();
-        mNoteEditViewModel.requestCreateNew(contentSnapshot.text);
+        mNoteEditViewModel.requestCreateNew(pushCurrentEditorContent().text);
         syncSessionFromViewModel();
     }
 
@@ -660,7 +655,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private void toggleListMode(NoteEditViewState state) {
         int oldMode = state.getCheckListMode();
         int newMode = oldMode == 0 ? TextNote.MODE_CHECK_LIST : 0;
-        EditorContentSnapshot modeSnapshot = collectWorkingText();
+        EditorContentSnapshot modeSnapshot = pushCurrentEditorContent();
         mNoteEditViewModel.changeCheckListMode(modeSnapshot.text,
                 modeSnapshot.hasCheckedItems, newMode);
         syncSessionFromViewModel();
@@ -668,18 +663,28 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void shareCurrentNote() {
-        EditorContentSnapshot shareSnapshot = collectWorkingText();
-        mNoteEditViewModel.updateWorkingText(shareSnapshot.text);
-        syncSessionFromViewModel();
+        pushCurrentEditorContent();
         sendTo(this, mNoteSession.getContent());
     }
 
     private void clearReminder() {
-        EditorContentSnapshot clearReminderSnapshot = collectWorkingText();
-        if (!mNoteEditViewModel.applyReminder(clearReminderSnapshot.text, 0, false)) {
+        if (!applyReminderFromCurrentContent(0, false)) {
             showToast(R.string.error_note_empty_for_clock);
         }
+    }
+
+    private EditorContentSnapshot pushCurrentEditorContent() {
+        EditorContentSnapshot snapshot = collectWorkingText();
+        mNoteEditViewModel.updateWorkingText(snapshot.text);
         syncSessionFromViewModel();
+        return snapshot;
+    }
+
+    private boolean applyReminderFromCurrentContent(long alertDate, boolean enabled) {
+        boolean applied = mNoteEditViewModel.applyReminder(pushCurrentEditorContent().text,
+                alertDate, enabled);
+        syncSessionFromViewModel();
+        return applied;
     }
 
     public void onDeleteRequested(DeleteRequest request) {
