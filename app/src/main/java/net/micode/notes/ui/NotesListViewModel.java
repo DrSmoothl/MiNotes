@@ -131,10 +131,6 @@ public final class NotesListViewModel extends ViewModel {
         return folderManagementUseCase != null && folderManagementUseCase.folderNameExists(name);
     }
 
-    public int getUserFolderCount() {
-        return folderManagementUseCase == null ? 0 : folderManagementUseCase.getUserFolderCount();
-    }
-
     public void createFolder(final String name) {
         if (folderManagementUseCase == null) {
             return;
@@ -165,7 +161,8 @@ public final class NotesListViewModel extends ViewModel {
                 List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
                 NotesListViewState updatedState = new NotesListViewState(
                         stateSnapshot.getCurrentFolderId(), stateSnapshot.getMode(),
-                        stateSnapshot.getCurrentFolderName(), items);
+                    stateSnapshot.getCurrentFolderName(), items,
+                    hasUserFolders());
                 if (renamed && folderId == stateSnapshot.getCurrentFolderId()) {
                     updatedState = updatedState.withCurrentFolderName(name);
                 }
@@ -291,10 +288,15 @@ public final class NotesListViewModel extends ViewModel {
             @Override
             public void run() {
                 List<NoteItemData> uiItems = loadItems(folderId);
-                currentState = new NotesListViewState(folderId, mode, folderName, uiItems);
+                currentState = new NotesListViewState(folderId, mode, folderName, uiItems,
+                        hasUserFolders());
                 viewState.postValue(currentState);
             }
         });
+    }
+
+    private boolean hasUserFolders() {
+        return folderManagementUseCase != null && folderManagementUseCase.getUserFolderCount() > 0;
     }
 
     private List<NoteItemData> loadItems(long folderId) {
@@ -313,31 +315,32 @@ public final class NotesListViewModel extends ViewModel {
             List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
             boolean operationSucceeded, int affectedCount, String destinationFolderName) {
         publishPendingAction(stateSnapshot, items, action, folderDestinations, exportedFile,
-            operationSucceeded, affectedCount, destinationFolderName,
-            Collections.<WidgetBinding>emptyList());
-        }
+                operationSucceeded, affectedCount, destinationFolderName,
+                Collections.<WidgetBinding>emptyList());
+    }
 
-        private void publishPendingAction(NotesListViewState stateSnapshot, List<NoteItemData> items,
+    private void publishPendingAction(NotesListViewState stateSnapshot, List<NoteItemData> items,
             NotesListViewState.PendingAction action,
             List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
             boolean operationSucceeded, int affectedCount, String destinationFolderName,
             List<WidgetBinding> widgetBindings) {
         currentState = new NotesListViewState(stateSnapshot.getCurrentFolderId(),
                 stateSnapshot.getMode(), stateSnapshot.getCurrentFolderName(), items,
-                nextPendingActionId++, action, folderDestinations, exportedFile,
-            operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
+                hasUserFolders(), nextPendingActionId++, action, folderDestinations,
+                exportedFile, operationSucceeded, affectedCount, destinationFolderName,
+                widgetBindings);
         viewState.postValue(currentState);
-        }
+    }
 
-        private void publishPendingAction(NotesListViewState state,
+    private void publishPendingAction(NotesListViewState state,
             NotesListViewState.PendingAction action,
             List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
             boolean operationSucceeded, int affectedCount, String destinationFolderName,
             List<WidgetBinding> widgetBindings) {
         currentState = new NotesListViewState(state.getCurrentFolderId(), state.getMode(),
-            state.getCurrentFolderName(), state.getItems(), nextPendingActionId++, action,
-            folderDestinations, exportedFile, operationSucceeded, affectedCount,
-            destinationFolderName, widgetBindings);
+                state.getCurrentFolderName(), state.getItems(), hasUserFolders(),
+                nextPendingActionId++, action, folderDestinations, exportedFile,
+                operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
         viewState.postValue(currentState);
     }
 }

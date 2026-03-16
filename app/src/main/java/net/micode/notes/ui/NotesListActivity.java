@@ -228,7 +228,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             getMenuInflater().inflate(R.menu.note_list_options, menu);
             mMoveMenu = menu.findItem(R.id.move);
             if (mFocusNoteDataItem.getParentId() == Notes.ID_CALL_RECORD_FOLDER
-                    || mListViewModel.getUserFolderCount() == 0) {
+                    || !mListViewModel.getCurrentState().hasUserFolders()) {
                 mMoveMenu.setVisible(false);
             } else {
                 mMoveMenu.setVisible(true);

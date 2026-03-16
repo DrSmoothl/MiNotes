@@ -37,14 +37,10 @@ public final class NotesListViewModelTest {
         FakeNoteRepository repository = new FakeNoteRepository(
                 Collections.singletonList(new NoteListItem(11L, 0L, 0, 0L,
                         false, 0L, 0, 2L, "Hello", Notes.TYPE_NOTE, 0, 0, "", "")));
-        Executor directExecutor = new Executor() {
-            @Override
-            public void execute(Runnable command) {
-                command.run();
-            }
-        };
+        repository.userFolderCount = 1;
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
-                directExecutor);
+                new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+                new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
 
         NoteItemData folder = new NoteItemData(new NoteListItem(2L, 0L, 0, 0L, false, 0L,
                 1, Notes.ID_ROOT_FOLDER, "Projects", Notes.TYPE_FOLDER, 0, 0, "", ""));
@@ -55,6 +51,7 @@ public final class NotesListViewModelTest {
         assertEquals(NotesListViewState.ScreenMode.FOLDER, viewModel.getCurrentState().getMode());
         assertEquals("Projects", viewModel.getCurrentState().getCurrentFolderName());
         assertEquals(1, viewModel.getCurrentState().getItemCount());
+        assertTrue(viewModel.getCurrentState().hasUserFolders());
     }
 
     @Test
@@ -76,6 +73,7 @@ public final class NotesListViewModelTest {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
         repository.folderDestinations = Collections.singletonList(new FolderDestination(5L,
                 "Archive"));
+        repository.userFolderCount = 1;
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
                 new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
                 new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
@@ -107,6 +105,7 @@ public final class NotesListViewModelTest {
     @Test
     public void renameFolder_updatesCurrentFolderNameAndPublishesResult() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        repository.userFolderCount = 1;
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
                 new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
                 new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
@@ -126,6 +125,7 @@ public final class NotesListViewModelTest {
     public void deleteFolder_publishesWidgetBindingsForRefresh() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
         repository.widgets = Collections.singleton(new WidgetBinding(12, Notes.TYPE_WIDGET_2X));
+        repository.userFolderCount = 1;
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
                 new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
                 new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
@@ -149,6 +149,7 @@ public final class NotesListViewModelTest {
         private final List<NoteListItem> notes;
         private List<FolderDestination> folderDestinations = Collections.emptyList();
         private Set<WidgetBinding> widgets = Collections.emptySet();
+        private int userFolderCount;
         private boolean renameFolderCalled;
         private boolean deleteNotesCalled;
 
@@ -169,7 +170,7 @@ public final class NotesListViewModelTest {
 
         @Override
         public int getUserFolderCount() {
-            return 0;
+            return userFolderCount;
         }
 
         @Override

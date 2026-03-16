@@ -31,6 +31,7 @@ public final class NotesListViewState {
     private final ScreenMode mode;
     private final String currentFolderName;
     private final List<NoteItemData> items;
+    private final boolean hasUserFolders;
     private final long pendingActionId;
     private final PendingAction pendingAction;
     private final List<FolderDestination> pendingFolderDestinations;
@@ -42,13 +43,21 @@ public final class NotesListViewState {
 
     public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
             List<NoteItemData> items) {
-        this(currentFolderId, mode, currentFolderName, items, 0L, PendingAction.NONE,
+        this(currentFolderId, mode, currentFolderName, items, false, 0L, PendingAction.NONE,
                 Collections.<FolderDestination>emptyList(), null, false, 0, null,
                 Collections.<WidgetBinding>emptyList());
     }
 
+        public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
+            List<NoteItemData> items, boolean hasUserFolders) {
+        this(currentFolderId, mode, currentFolderName, items, hasUserFolders, 0L,
+            PendingAction.NONE, Collections.<FolderDestination>emptyList(), null, false, 0,
+            null, Collections.<WidgetBinding>emptyList());
+        }
+
     public NotesListViewState(long currentFolderId, ScreenMode mode, String currentFolderName,
-            List<NoteItemData> items, long pendingActionId, PendingAction pendingAction,
+            List<NoteItemData> items, boolean hasUserFolders, long pendingActionId,
+            PendingAction pendingAction,
             List<FolderDestination> pendingFolderDestinations,
             ExportedTextFile pendingExportedFile, boolean pendingOperationSucceeded,
             int pendingAffectedCount, String pendingDestinationFolderName,
@@ -57,6 +66,7 @@ public final class NotesListViewState {
         this.mode = mode;
         this.currentFolderName = currentFolderName;
         this.items = Collections.unmodifiableList(new ArrayList<NoteItemData>(items));
+        this.hasUserFolders = hasUserFolders;
         this.pendingActionId = pendingActionId;
         this.pendingAction = pendingAction;
         this.pendingFolderDestinations = Collections.unmodifiableList(
@@ -91,6 +101,10 @@ public final class NotesListViewState {
 
     public int getItemCount() {
         return items.size();
+    }
+
+    public boolean hasUserFolders() {
+        return hasUserFolders;
     }
 
     public long getPendingActionId() {
@@ -134,7 +148,8 @@ public final class NotesListViewState {
     }
 
     public NotesListViewState withCurrentFolderName(String name) {
-        return new NotesListViewState(currentFolderId, mode, name, items, pendingActionId,
+        return new NotesListViewState(currentFolderId, mode, name, items, hasUserFolders,
+            pendingActionId,
                 pendingAction, pendingFolderDestinations, pendingExportedFile,
                 pendingOperationSucceeded, pendingAffectedCount, pendingDestinationFolderName,
                 pendingWidgetBindings);
@@ -144,9 +159,9 @@ public final class NotesListViewState {
             List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
             boolean operationSucceeded, int affectedCount, String destinationFolderName,
             List<WidgetBinding> widgetBindings) {
-        return new NotesListViewState(currentFolderId, mode, currentFolderName, items, actionId,
-                action, folderDestinations, exportedFile, operationSucceeded, affectedCount,
-                destinationFolderName, widgetBindings);
+        return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
+            hasUserFolders, actionId, action, folderDestinations, exportedFile,
+            operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
     }
 
     public NotesListViewState withoutPendingAction() {
