@@ -331,6 +331,10 @@ public final class NoteEditViewState {
         return pendingActionSetsResultOk;
     }
 
+    public boolean shouldSetResultOkAfterHandling() {
+        return pendingActionSetsResultOk;
+    }
+
     public long getPendingActionFolderId() {
         return pendingActionFolderId;
     }

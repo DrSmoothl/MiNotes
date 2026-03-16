@@ -159,6 +159,10 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
     }
 
+    private interface BooleanMutation {
+        boolean run();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -675,10 +679,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private boolean applyReminderFromCurrentContent(long alertDate, boolean enabled) {
-        boolean applied = mNoteEditViewModel.applyReminder(getCurrentEditorContent().text,
-                alertDate, enabled);
-        syncSessionFromViewModel();
-        return applied;
+        return performBooleanMutationAndSync(new BooleanMutation() {
+            @Override
+            public boolean run() {
+                return mNoteEditViewModel.applyReminder(getCurrentEditorContent().text,
+                        alertDate, enabled);
+            }
+        });
     }
 
     public void onDeleteRequested(DeleteRequest request) {
@@ -867,9 +874,12 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private boolean saveCurrentEditorContent() {
-        boolean saved = mNoteEditViewModel.save(getCurrentEditorContent().text);
-        syncSessionFromViewModel();
-        return saved;
+        return performBooleanMutationAndSync(new BooleanMutation() {
+            @Override
+            public boolean run() {
+                return mNoteEditViewModel.save(getCurrentEditorContent().text);
+            }
+        });
     }
 
     private void renderViewState(NoteEditViewState state) {
@@ -900,7 +910,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             return;
         }
         long actionId = state.getPendingActionId();
-        if (state.pendingActionSetsResultOk()) {
+        if (state.shouldSetResultOkAfterHandling()) {
             setResult(RESULT_OK);
         }
         if (state.shouldOpenNewNoteAfterHandling()) {
@@ -913,33 +923,68 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void updateWorkingText(String text) {
-        mNoteEditViewModel.updateWorkingText(text);
-        syncSessionFromViewModel();
+        performMutationAndSync(new Runnable() {
+            @Override
+            public void run() {
+                mNoteEditViewModel.updateWorkingText(text);
+            }
+        });
     }
 
     private void applyBackgroundColor(int backgroundId) {
-        mNoteEditViewModel.setBackgroundColor(backgroundId);
-        syncSessionFromViewModel();
+        performMutationAndSync(new Runnable() {
+            @Override
+            public void run() {
+                mNoteEditViewModel.setBackgroundColor(backgroundId);
+            }
+        });
     }
 
     private void requestCloseWithContent(String content) {
-        mNoteEditViewModel.requestClose(content);
-        syncSessionFromViewModel();
+        performMutationAndSync(new Runnable() {
+            @Override
+            public void run() {
+                mNoteEditViewModel.requestClose(content);
+            }
+        });
     }
 
     private void requestCreateNewWithContent(String content) {
-        mNoteEditViewModel.requestCreateNew(content);
-        syncSessionFromViewModel();
+        performMutationAndSync(new Runnable() {
+            @Override
+            public void run() {
+                mNoteEditViewModel.requestCreateNew(content);
+            }
+        });
     }
 
     private void requestDeleteAndClose() {
-        mNoteEditViewModel.requestDeleteAndClose();
-        syncSessionFromViewModel();
+        performMutationAndSync(new Runnable() {
+            @Override
+            public void run() {
+                mNoteEditViewModel.requestDeleteAndClose();
+            }
+        });
     }
 
     private void changeCheckListMode(String text, boolean hasCheckedItems, int newMode) {
-        mNoteEditViewModel.changeCheckListMode(text, hasCheckedItems, newMode);
+        performMutationAndSync(new Runnable() {
+            @Override
+            public void run() {
+                mNoteEditViewModel.changeCheckListMode(text, hasCheckedItems, newMode);
+            }
+        });
+    }
+
+    private void performMutationAndSync(Runnable mutation) {
+        mutation.run();
         syncSessionFromViewModel();
+    }
+
+    private boolean performBooleanMutationAndSync(BooleanMutation mutation) {
+        boolean result = mutation.run();
+        syncSessionFromViewModel();
+        return result;
     }
 
     private void openPendingNewNote(long actionId, long folderId) {

@@ -201,11 +201,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
             switch (item.getItemId()) {
                 case R.id.delete:
-                    mListViewModel.requestDeleteNotesConfirmation(
-                            selectionUiState.getSelectedCount());
+                    requestDeleteSelectedNotesConfirmation(selectionUiState);
                     return true;
                 case R.id.move:
-                    mListViewModel.requestMoveDestinations();
+                    requestMoveSelectedNotes();
                     return true;
                 case R.id.action_select_all:
                     mNotesListAdapter.selectAll(selectionUiState.shouldSelectAllOnToggle());
@@ -285,9 +284,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         builder.setItems(names, new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
-                mListViewModel.moveNotes(selection.getSelectedItemIds(),
-                    folders.get(which).getId(), folders.get(which).getName(),
-                    selection.getSelectedCount());
+                moveSelectedNotes(selection, folders.get(which));
             }
         });
         builder.show();
@@ -300,6 +297,25 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     private void batchDelete() {
         NotesListAdapter.SelectionSnapshot selection = mNotesListAdapter.getSelectionSnapshot();
         mPendingDeletedWidgets = selection.getSelectedWidgets();
+        deleteSelectedNotes(selection);
+    }
+
+    private void requestDeleteSelectedNotesConfirmation(
+            NotesListViewModel.SelectionUiState selectionUiState) {
+        mListViewModel.requestDeleteNotesConfirmation(selectionUiState.getSelectedCount());
+    }
+
+    private void requestMoveSelectedNotes() {
+        mListViewModel.requestMoveDestinations();
+    }
+
+    private void moveSelectedNotes(NotesListAdapter.SelectionSnapshot selection,
+            FolderDestination destination) {
+        mListViewModel.moveNotes(selection.getSelectedItemIds(), destination.getId(),
+                destination.getName(), selection.getSelectedCount());
+    }
+
+    private void deleteSelectedNotes(NotesListAdapter.SelectionSnapshot selection) {
         mListViewModel.deleteNotes(selection.getSelectedItemIds());
     }
 
