@@ -93,6 +93,44 @@ public final class NotesListViewModelTest {
     }
 
         @Test
+        public void resolveItemLongClickAction_routesByItemTypeAndChoiceMode() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData note = new NoteItemData(new NoteListItem(3L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Draft", Notes.TYPE_NOTE, 0, 0, "", ""));
+        NoteItemData folder = new NoteItemData(new NoteListItem(2L, 0L, 0, 0L, false, 0L,
+            1, Notes.ID_ROOT_FOLDER, "Projects", Notes.TYPE_FOLDER, 0, 0, "", ""));
+
+        assertEquals(NotesListViewModel.ItemLongClickAction.START_SELECTION,
+            viewModel.resolveItemLongClickAction(note, false));
+        assertEquals(NotesListViewModel.ItemLongClickAction.SHOW_FOLDER_MENU,
+            viewModel.resolveItemLongClickAction(folder, false));
+        assertEquals(NotesListViewModel.ItemLongClickAction.NONE,
+            viewModel.resolveItemLongClickAction(note, true));
+        }
+
+        @Test
+        public void shouldShowMoveAction_dependsOnFolderAvailabilityAndParentFolder() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        repository.userFolderCount = 1;
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData normalNote = new NoteItemData(new NoteListItem(3L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Draft", Notes.TYPE_NOTE, 0, 0, "", ""));
+        NoteItemData callRecordNote = new NoteItemData(new NoteListItem(4L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_CALL_RECORD_FOLDER, "Call", Notes.TYPE_NOTE, 0, 0, "", ""));
+
+        assertTrue(viewModel.shouldShowMoveAction(normalNote));
+        assertFalse(viewModel.shouldShowMoveAction(callRecordNote));
+        assertFalse(new NotesListViewModel(new LoadNotesUseCase(new FakeNoteRepository(
+            Collections.<NoteListItem>emptyList())), new DirectExecutor())
+            .shouldShowMoveAction(normalNote));
+        }
+
+        @Test
         public void resolveItemClickAction_inRootModeRoutesFolderAndNote() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),

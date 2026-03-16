@@ -166,8 +166,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
             getMenuInflater().inflate(R.menu.note_list_options, menu);
             mMoveMenu = menu.findItem(R.id.move);
-            if (mFocusNoteDataItem.getParentId() == Notes.ID_CALL_RECORD_FOLDER
-                    || !mListViewModel.getCurrentState().hasUserFolders()) {
+            if (!mListViewModel.shouldShowMoveAction(mFocusNoteDataItem)) {
                 mMoveMenu.setVisible(false);
             } else {
                 mMoveMenu.setVisible(true);
@@ -753,19 +752,22 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             return false;
         }
         mFocusNoteDataItem = item;
-        if (item.getType() == Notes.TYPE_NOTE && !mNotesListAdapter.isInChoiceMode()) {
-            if (startSupportActionMode(mModeCallBack) != null) {
-                mModeCallBack.toggleSelection(position);
-                view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+        switch (mListViewModel.resolveItemLongClickAction(item,
+                mNotesListAdapter.isInChoiceMode())) {
+            case START_SELECTION:
+                if (startSupportActionMode(mModeCallBack) != null) {
+                    mModeCallBack.toggleSelection(position);
+                    view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+                    return true;
+                }
+                Log.e(TAG, "startActionMode fails");
+                return false;
+            case SHOW_FOLDER_MENU:
+                showFolderMenu(view, item);
                 return true;
-            }
-            Log.e(TAG, "startActionMode fails");
-            return false;
+            case NONE:
+            default:
+                return false;
         }
-        if (item.getType() == Notes.TYPE_FOLDER) {
-            showFolderMenu(view, item);
-            return true;
-        }
-        return false;
     }
 }
