@@ -359,6 +359,10 @@ public final class NotesListViewState {
         return pendingAction;
     }
 
+    public boolean hasPendingAction() {
+        return pendingAction != PendingAction.NONE;
+    }
+
     public List<FolderDestination> getPendingFolderDestinations() {
         return pendingFolderDestinations;
     }
@@ -421,6 +425,35 @@ public final class NotesListViewState {
 
     public boolean isCallRecordMode() {
         return mode == ScreenMode.CALL_RECORD;
+    }
+
+    public boolean shouldOpenNoteEditorAfterHandling() {
+        return pendingAction == PendingAction.OPEN_NOTE_EDITOR;
+    }
+
+    public boolean shouldShowFolderNameDialogAfterHandling() {
+        return pendingAction == PendingAction.SHOW_FOLDER_NAME_DIALOG;
+    }
+
+    public boolean shouldConfirmDeleteFolderAfterHandling() {
+        return pendingAction == PendingAction.CONFIRM_DELETE_FOLDER;
+    }
+
+    public boolean shouldConfirmDeleteNotesAfterHandling() {
+        return pendingAction == PendingAction.CONFIRM_DELETE_NOTES;
+    }
+
+    public boolean shouldShowMoveDestinationsAfterHandling() {
+        return pendingAction == PendingAction.SHOW_MOVE_DESTINATIONS;
+    }
+
+    public boolean shouldShowExportResultAfterHandling() {
+        return pendingAction == PendingAction.SHOW_EXPORT_RESULT;
+    }
+
+    public boolean shouldFinishSelectionModeAfterHandling() {
+        return pendingAction == PendingAction.DELETE_COMPLETED
+                || pendingAction == PendingAction.MOVE_COMPLETED;
     }
 
     public NotesListViewState withCurrentFolderName(String name) {

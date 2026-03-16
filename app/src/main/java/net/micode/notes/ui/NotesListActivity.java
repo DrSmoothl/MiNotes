@@ -503,35 +503,35 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void handlePendingAction(NotesListViewState state) {
-        if (state.getPendingAction() == NotesListViewState.PendingAction.NONE) {
+        if (!state.hasPendingAction()) {
             return;
         }
         long actionId = state.getPendingActionId();
         switch (state.getPendingAction()) {
             case INTRODUCTION_INIT_FAILED:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 Log.e(TAG, "Initialize introduction note error");
                 return;
             case OPEN_NOTE_EDITOR:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 launchNoteEditor(state);
                 return;
             case SHOW_FOLDER_NAME_DIALOG:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 showCreateOrModifyFolderDialog(state.isPendingFolderDialogCreateMode(),
                         state.getPendingFolderDialogFolderId(),
                         state.getPendingFolderDialogInitialName());
                 return;
             case CONFIRM_DELETE_FOLDER:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 showDeleteFolderConfirmation(state);
                 return;
             case CONFIRM_DELETE_NOTES:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 showDeleteNotesConfirmation(state.getPendingAffectedCount());
                 return;
             case SHOW_MOVE_DESTINATIONS:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (state.getPendingFolderDestinations().isEmpty()) {
                     Log.e(TAG, "Query folder failed");
                     return;
@@ -539,20 +539,20 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 showFolderListMenu(state.getPendingFolderDestinations());
                 return;
             case SHOW_EXPORT_RESULT:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 showExportResult(state.getPendingExportedFile());
                 return;
             case DELETE_COMPLETED:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Delete notes error, should not happens");
                     return;
                 }
                 refreshPendingDeletedWidgets();
-                mModeCallBack.finishActionMode();
+                finishSelectionMode();
                 return;
             case MOVE_COMPLETED:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Move notes error, should not happen");
                     return;
@@ -562,10 +562,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                                 state.getPendingAffectedCount(),
                                 state.getPendingDestinationFolderName()),
                         Toast.LENGTH_SHORT).show();
-                mModeCallBack.finishActionMode();
+                finishSelectionMode();
                 return;
             case FOLDER_NAME_CONFLICT:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (mFolderNameEditText != null) {
                     mFolderNameEditText.requestFocus();
                     mFolderNameEditText.setSelection(0, mFolderNameEditText.length());
@@ -576,7 +576,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                         Toast.LENGTH_LONG).show();
                 return;
             case FOLDER_CREATED:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Create folder failed");
                     return;
@@ -584,7 +584,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 dismissFolderNameDialog();
                 return;
             case FOLDER_RENAMED:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Rename folder failed");
                     return;
@@ -592,7 +592,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 dismissFolderNameDialog();
                 return;
             case FOLDER_DELETED:
-                mListViewModel.markPendingActionHandled(actionId);
+                markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Delete folder failed");
                     return;
@@ -602,6 +602,14 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             default:
                 return;
         }
+    }
+
+    private void markPendingActionHandled(long actionId) {
+        mListViewModel.markPendingActionHandled(actionId);
+    }
+
+    private void finishSelectionMode() {
+        mModeCallBack.finishActionMode();
     }
 
     private void launchNoteEditor(NotesListViewState state) {
