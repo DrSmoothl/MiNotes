@@ -352,7 +352,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
          * is no id which is equivalent to create new note
          */
         if (state != null && !state.isExistingNote()) {
-            saveNote();
+            saveCurrentEditorContent();
         }
         outState.putLong(Intent.EXTRA_UID, mNoteSession.getNoteId());
         Log.d(TAG, "Save working note id: " + mNoteSession.getNoteId() + " onSaveInstanceState");
@@ -413,7 +413,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     @Override
     protected void onPause() {
         super.onPause();
-        if (saveNote()) {
+        if (saveCurrentEditorContent()) {
             Log.d(TAG, "Note data was saved with length:" + mNoteSession.getContent().length());
         }
     }
@@ -866,9 +866,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         return new CheckListDocument(items);
     }
 
-    private boolean saveNote() {
-        EditorContentSnapshot contentSnapshot = collectWorkingText();
-        boolean saved = mNoteEditViewModel.save(contentSnapshot.text);
+    private boolean saveCurrentEditorContent() {
+        boolean saved = mNoteEditViewModel.save(pushCurrentEditorContent().text);
         syncSessionFromViewModel();
         return saved;
     }

@@ -95,19 +95,6 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     public static final int NOTES_LISTVIEW_SCROLL_RATE = 30;
 
-    private static final class SelectedNotesSnapshot {
-        private final java.util.Set<Long> noteIds;
-        private final HashSet<AppWidgetAttribute> widgetAttributes;
-        private final int selectedCount;
-
-        private SelectedNotesSnapshot(java.util.Set<Long> noteIds,
-                HashSet<AppWidgetAttribute> widgetAttributes, int selectedCount) {
-            this.noteIds = noteIds;
-            this.widgetAttributes = widgetAttributes;
-            this.selectedCount = selectedCount;
-        }
-    }
-
     private NoteItemData mFocusNoteDataItem;
     private HashSet<AppWidgetAttribute> mPendingDeletedWidgets;
     private Dialog mFolderNameDialog;
@@ -241,7 +228,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
 
         public void toggleSelection(int position) {
-            mNotesListAdapter.setCheckedItem(position, !mNotesListAdapter.isSelectedItem(position));
+            mNotesListAdapter.toggleSelection(position);
             if (mActionMode == null) {
                 return;
             }
@@ -277,9 +264,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
 
         private NotesListViewModel.SelectionUiState getSelectionUiState() {
+            NotesListAdapter.SelectionSnapshot selection = mNotesListAdapter.getSelectionSnapshot();
             return mListViewModel.buildSelectionUiState(mFocusNoteDataItem,
-                    mNotesListAdapter.getSelectedCount(),
-                    mNotesListAdapter.isAllSelected());
+                    selection.getSelectedCount(), selection.isAllSelected());
         }
     }
 
@@ -288,7 +275,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void showFolderListMenu(final List<FolderDestination> folders) {
-        final SelectedNotesSnapshot selection = getSelectedNotesSnapshot();
+        final NotesListAdapter.SelectionSnapshot selection = mNotesListAdapter.getSelectionSnapshot();
         AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
         builder.setTitle(R.string.menu_title_select_folder);
         final String[] names = new String[folders.size()];
@@ -298,8 +285,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         builder.setItems(names, new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
-                mListViewModel.moveNotes(selection.noteIds, folders.get(which).getId(),
-                    folders.get(which).getName(), selection.selectedCount);
+                mListViewModel.moveNotes(selection.getSelectedItemIds(),
+                    folders.get(which).getId(), folders.get(which).getName(),
+                    selection.getSelectedCount());
             }
         });
         builder.show();
@@ -310,14 +298,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void batchDelete() {
-        SelectedNotesSnapshot selection = getSelectedNotesSnapshot();
-        mPendingDeletedWidgets = selection.widgetAttributes;
-        mListViewModel.deleteNotes(selection.noteIds);
-    }
-
-    private SelectedNotesSnapshot getSelectedNotesSnapshot() {
-        return new SelectedNotesSnapshot(mNotesListAdapter.getSelectedItemIds(),
-                mNotesListAdapter.getSelectedWidget(), mNotesListAdapter.getSelectedCount());
+        NotesListAdapter.SelectionSnapshot selection = mNotesListAdapter.getSelectionSnapshot();
+        mPendingDeletedWidgets = selection.getSelectedWidgets();
+        mListViewModel.deleteNotes(selection.getSelectedItemIds());
     }
 
     private void openNode(NoteItemData data) {

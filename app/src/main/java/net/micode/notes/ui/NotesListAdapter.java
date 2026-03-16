@@ -48,6 +48,38 @@ public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.Note
         public int widgetType;
     };
 
+    public static final class SelectionSnapshot {
+        private final HashSet<Long> selectedItemIds;
+        private final HashSet<AppWidgetAttribute> selectedWidgets;
+        private final int selectedCount;
+        private final boolean allSelected;
+
+        private SelectionSnapshot(HashSet<Long> selectedItemIds,
+                HashSet<AppWidgetAttribute> selectedWidgets, int selectedCount,
+                boolean allSelected) {
+            this.selectedItemIds = selectedItemIds;
+            this.selectedWidgets = selectedWidgets;
+            this.selectedCount = selectedCount;
+            this.allSelected = allSelected;
+        }
+
+        public HashSet<Long> getSelectedItemIds() {
+            return selectedItemIds;
+        }
+
+        public HashSet<AppWidgetAttribute> getSelectedWidgets() {
+            return selectedWidgets;
+        }
+
+        public int getSelectedCount() {
+            return selectedCount;
+        }
+
+        public boolean isAllSelected() {
+            return allSelected;
+        }
+    }
+
     public NotesListAdapter(Context context, NoteItemListener listener) {
         mSelectedIndex = new HashMap<Integer, Boolean>();
         mContext = context;
@@ -103,6 +135,10 @@ public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.Note
     public void setCheckedItem(final int position, final boolean checked) {
         mSelectedIndex.put(position, checked);
         notifyDataSetChanged();
+    }
+
+    public void toggleSelection(int position) {
+        setCheckedItem(position, !isSelectedItem(position));
     }
 
     public boolean isInChoiceMode() {
@@ -164,6 +200,14 @@ public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.Note
     public boolean isAllSelected() {
         int checkedCount = getSelectedCount();
         return (checkedCount != 0 && checkedCount == mNotesCount);
+    }
+
+    public SelectionSnapshot getSelectionSnapshot() {
+        HashSet<Long> itemIds = getSelectedItemIds();
+        HashSet<AppWidgetAttribute> widgets = getSelectedWidget();
+        int selectedCount = getSelectedCount();
+        return new SelectionSnapshot(itemIds, widgets, selectedCount,
+                selectedCount != 0 && selectedCount == mNotesCount);
     }
 
     public boolean isSelectedItem(final int position) {
