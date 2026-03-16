@@ -1,6 +1,12 @@
 package net.micode.notes.ui;
 
 public final class NoteEditViewState {
+    public enum PendingAction {
+        NONE,
+        CLOSE_EDITOR,
+        OPEN_NEW_NOTE
+    }
+
     private final boolean existingNote;
     private final long modifiedDate;
     private final int backgroundColorId;
@@ -16,11 +22,17 @@ public final class NoteEditViewState {
     private final boolean canDelete;
     private final boolean canSetReminder;
     private final boolean canToggleListMode;
+    private final long pendingActionId;
+    private final PendingAction pendingAction;
+    private final boolean pendingActionSetsResultOk;
+    private final long pendingActionFolderId;
 
     public NoteEditViewState(boolean existingNote, long modifiedDate, int backgroundColorId,
             boolean hasClockAlert, long alertDate, long folderId, int widgetId, int widgetType,
             int checkListMode, String content, boolean hasContent, boolean canShare,
-            boolean canDelete, boolean canSetReminder, boolean canToggleListMode) {
+            boolean canDelete, boolean canSetReminder, boolean canToggleListMode,
+            long pendingActionId, PendingAction pendingAction,
+            boolean pendingActionSetsResultOk, long pendingActionFolderId) {
         this.existingNote = existingNote;
         this.modifiedDate = modifiedDate;
         this.backgroundColorId = backgroundColorId;
@@ -36,6 +48,10 @@ public final class NoteEditViewState {
         this.canDelete = canDelete;
         this.canSetReminder = canSetReminder;
         this.canToggleListMode = canToggleListMode;
+        this.pendingActionId = pendingActionId;
+        this.pendingAction = pendingAction;
+        this.pendingActionSetsResultOk = pendingActionSetsResultOk;
+        this.pendingActionFolderId = pendingActionFolderId;
     }
 
     public boolean isExistingNote() {
@@ -96,5 +112,21 @@ public final class NoteEditViewState {
 
     public boolean canToggleListMode() {
         return canToggleListMode;
+    }
+
+    public long getPendingActionId() {
+        return pendingActionId;
+    }
+
+    public PendingAction getPendingAction() {
+        return pendingAction;
+    }
+
+    public boolean pendingActionSetsResultOk() {
+        return pendingActionSetsResultOk;
+    }
+
+    public long getPendingActionFolderId() {
+        return pendingActionFolderId;
     }
 }

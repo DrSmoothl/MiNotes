@@ -23,8 +23,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
@@ -61,27 +59,19 @@ import net.micode.notes.data.Notes;
 import net.micode.notes.domain.model.ExportedTextFile;
 import net.micode.notes.domain.model.FolderDestination;
 import net.micode.notes.domain.model.NoteEditorSession;
-import net.micode.notes.domain.model.NoteListItem;
 import net.micode.notes.domain.model.WidgetBinding;
 import net.micode.notes.domain.service.WidgetNotifier;
 import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
-import net.micode.notes.domain.usecase.list.DeleteNotesUseCase;
-import net.micode.notes.domain.usecase.list.ExportNotesUseCase;
-import net.micode.notes.domain.usecase.list.FolderManagementUseCase;
-import net.micode.notes.domain.usecase.list.LoadNotesUseCase;
 import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.ui.NotesListAdapter.AppWidgetAttribute;
 
-import java.util.ArrayList;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class NotesListActivity extends AppCompatActivity implements OnClickListener,
     NotesListAdapter.NoteItemListener {
@@ -107,14 +97,6 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private ModeCallback mModeCallBack;
 
-    private LoadNotesUseCase mLoadNotesUseCase;
-
-    private FolderManagementUseCase mFolderManagementUseCase;
-
-    private DeleteNotesUseCase mDeleteNotesUseCase;
-
-    private ExportNotesUseCase mExportNotesUseCase;
-
     private WidgetNotifier mWidgetNotifier;
 
     private StartNoteEditorSessionUseCase mStartNoteEditorSessionUseCase;
@@ -126,10 +108,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     public static final int NOTES_LISTVIEW_SCROLL_RATE = 30;
 
     private NoteItemData mFocusNoteDataItem;
-
-    private final ExecutorService mBackgroundExecutor = Executors.newSingleThreadExecutor();
-
-    private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+    private HashSet<AppWidgetAttribute> mPendingDeletedWidgets;
 
     private final ActivityResultLauncher<Intent> mNoteEditorLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -213,14 +192,12 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private void initResources() {
         NotesApplicationGraph graph = new NotesApplicationGraph(this);
-        mLoadNotesUseCase = graph.loadNotesUseCase();
-        mFolderManagementUseCase = graph.folderManagementUseCase();
-        mDeleteNotesUseCase = graph.deleteNotesUseCase();
-        mExportNotesUseCase = graph.exportNotesUseCase();
         mWidgetNotifier = graph.widgetNotifier();
         mStartNoteEditorSessionUseCase = graph.startNoteEditorSessionUseCase();
         mListViewModel = new ViewModelProvider(this,
-            new NotesListViewModel.Factory(mLoadNotesUseCase)).get(NotesListViewModel.class);
+            new NotesListViewModel.Factory(graph.loadNotesUseCase(), graph.folderManagementUseCase(),
+                    graph.deleteNotesUseCase(), graph.exportNotesUseCase()))
+                .get(NotesListViewModel.class);
         mToolbar = (MaterialToolbar) findViewById(R.id.top_app_bar);
         setSupportActionBar(mToolbar);
         mToolbar.setNavigationOnClickListener(new OnClickListener() {
@@ -251,7 +228,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             getMenuInflater().inflate(R.menu.note_list_options, menu);
             mMoveMenu = menu.findItem(R.id.move);
             if (mFocusNoteDataItem.getParentId() == Notes.ID_CALL_RECORD_FOLDER
-                    || mFolderManagementUseCase.getUserFolderCount() == 0) {
+                    || mListViewModel.getUserFolderCount() == 0) {
                 mMoveMenu.setVisible(false);
             } else {
                 mMoveMenu.setVisible(true);
@@ -303,7 +280,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                     builder.show();
                     return true;
                 case R.id.move:
-                    startQueryDestinationFolders();
+                    mListViewModel.requestMoveDestinations();
                     return true;
                 case R.id.action_select_all:
                     mNotesListAdapter.selectAll(!mNotesListAdapter.isAllSelected());
@@ -353,16 +330,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         builder.setItems(names, new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
-                mFolderManagementUseCase.moveNotes(mNotesListAdapter.getSelectedItemIds(),
-                        folders.get(which).getId());
-                Toast.makeText(
-                        NotesListActivity.this,
-                        getString(R.string.format_move_notes_to_folder,
-                                mNotesListAdapter.getSelectedCount(),
-                                folders.get(which).getName()),
-                        Toast.LENGTH_SHORT).show();
-                startAsyncNotesListQuery();
-                mModeCallBack.finishActionMode();
+                mListViewModel.moveNotes(mNotesListAdapter.getSelectedItemIds(),
+                    folders.get(which).getId(), folders.get(which).getName(),
+                    mNotesListAdapter.getSelectedCount());
             }
         });
         builder.show();
@@ -377,46 +347,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void batchDelete() {
-        mBackgroundExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                final HashSet<AppWidgetAttribute> widgets = mNotesListAdapter.getSelectedWidget();
-                if (!mDeleteNotesUseCase.delete(mNotesListAdapter.getSelectedItemIds())) {
-                    Log.e(TAG, "Delete notes error, should not happens");
-                }
-                mMainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (widgets != null) {
-                            for (AppWidgetAttribute widget : widgets) {
-                                if (widget.widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
-                                        && widget.widgetType != Notes.TYPE_WIDGET_INVALIDE) {
-                                    updateWidget(widget.widgetId, widget.widgetType);
-                                }
-                            }
-                        }
-                        mModeCallBack.finishActionMode();
-                    }
-                });
-            }
-        });
-    }
-
-    private void deleteFolder(long folderId) {
-        if (folderId == Notes.ID_ROOT_FOLDER) {
-            Log.e(TAG, "Wrong folder id, should not happen " + folderId);
-            return;
-        }
-
-        java.util.Set<WidgetBinding> widgets = mFolderManagementUseCase.deleteFolder(folderId);
-        if (widgets != null) {
-            for (WidgetBinding widget : widgets) {
-                if (widget.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
-                        && widget.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
-                    updateWidget(widget.getWidgetId(), widget.getWidgetType());
-                }
-            }
-        }
+        mPendingDeletedWidgets = mNotesListAdapter.getSelectedWidget();
+        mListViewModel.deleteNotes(mNotesListAdapter.getSelectedItemIds());
     }
 
     private void openNode(NoteItemData data) {
@@ -490,7 +422,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             public void onClick(View v) {
                 hideSoftInput(etName);
                 String name = etName.getText().toString();
-                if (mFolderManagementUseCase.folderNameExists(name)) {
+                if (mListViewModel.folderNameExists(name)) {
                     Toast.makeText(NotesListActivity.this, getString(R.string.folder_exist, name),
                             Toast.LENGTH_LONG).show();
                     etName.setSelection(0, etName.length());
@@ -498,16 +430,11 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 }
                 if (!create) {
                     if (!TextUtils.isEmpty(name)) {
-                        mFolderManagementUseCase.renameFolder(mFocusNoteDataItem.getId(), name);
-                        if (mFocusNoteDataItem.getId()
-                                == mListViewModel.getCurrentState().getCurrentFolderId()) {
-                            mListViewModel.renameCurrentFolder(name);
-                        }
+                        mListViewModel.renameFolder(mFocusNoteDataItem.getId(), name);
                     }
                 } else if (!TextUtils.isEmpty(name)) {
-                    mFolderManagementUseCase.createFolder(name);
+                    mListViewModel.createFolder(name);
                 }
-                startAsyncNotesListQuery();
                 dialog.dismiss();
             }
         });
@@ -574,7 +501,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 break;
             }
             case R.id.menu_export_text: {
-                exportNoteToText();
+                mListViewModel.requestExport();
                 break;
             }
             case R.id.menu_setting: {
@@ -600,76 +527,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         return true;
     }
 
-    private void exportNoteToText() {
-        mBackgroundExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-                final ExportedTextFile result = mExportNotesUseCase.exportToText();
-                mMainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (result.getState() == ExportedTextFile.ExportState.STORAGE_UNAVAILABLE) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
-                            builder.setTitle(NotesListActivity.this
-                                    .getString(R.string.failed_sdcard_export));
-                            builder.setMessage(NotesListActivity.this
-                                    .getString(R.string.error_sdcard_unmounted));
-                            builder.setPositiveButton(android.R.string.ok, null);
-                            builder.show();
-                            } else if (result.getState() == ExportedTextFile.ExportState.SUCCESS) {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
-                            builder.setTitle(NotesListActivity.this
-                                    .getString(R.string.success_sdcard_export));
-                            builder.setMessage(NotesListActivity.this.getString(
-                                    R.string.format_exported_file_location,
-                                    result.getFileName(), result.getDirectory()));
-                            builder.setPositiveButton(android.R.string.ok, null);
-                            builder.show();
-                            } else {
-                            AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
-                            builder.setTitle(NotesListActivity.this
-                                    .getString(R.string.failed_sdcard_export));
-                            builder.setMessage(NotesListActivity.this
-                                    .getString(R.string.error_sdcard_export));
-                            builder.setPositiveButton(android.R.string.ok, null);
-                            builder.show();
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    @Override
-    protected void onDestroy() {
-        mBackgroundExecutor.shutdown();
-        super.onDestroy();
-    }
-
     private void startPreferenceActivity() {
         Intent intent = new Intent(this, NotesPreferenceActivity.class);
         startActivity(intent);
-    }
-
-    private void startQueryDestinationFolders() {
-        mBackgroundExecutor.execute(new Runnable() {
-            @Override
-            public void run() {
-            final List<FolderDestination> folders = mFolderManagementUseCase
-                .getFolderDestinations(mListViewModel.getCurrentState().getCurrentFolderId(),
-                    !mListViewModel.getCurrentState().isRootMode());
-                mMainHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (folders.isEmpty()) {
-                            Log.e(TAG, "Query folder failed");
-                            return;
-                        }
-                        showFolderListMenu(folders);
-                    }
-                });
-            }
-        });
     }
 
     private void renderViewState(NotesListViewState state) {
@@ -677,6 +537,117 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         mAddNewNote.setVisibility(state.isCallRecordMode() ? View.GONE : View.VISIBLE);
         renderTopBar(state);
         invalidateOptionsMenu();
+        handlePendingAction(state);
+    }
+
+    private void handlePendingAction(NotesListViewState state) {
+        if (state.getPendingAction() == NotesListViewState.PendingAction.NONE) {
+            return;
+        }
+        long actionId = state.getPendingActionId();
+        switch (state.getPendingAction()) {
+            case SHOW_MOVE_DESTINATIONS:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (state.getPendingFolderDestinations().isEmpty()) {
+                    Log.e(TAG, "Query folder failed");
+                    return;
+                }
+                showFolderListMenu(state.getPendingFolderDestinations());
+                return;
+            case SHOW_EXPORT_RESULT:
+                mListViewModel.markPendingActionHandled(actionId);
+                showExportResult(state.getPendingExportedFile());
+                return;
+            case DELETE_COMPLETED:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (!state.isPendingOperationSucceeded()) {
+                    Log.e(TAG, "Delete notes error, should not happens");
+                    return;
+                }
+                refreshPendingDeletedWidgets();
+                mModeCallBack.finishActionMode();
+                return;
+            case MOVE_COMPLETED:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (!state.isPendingOperationSucceeded()) {
+                    Log.e(TAG, "Move notes error, should not happen");
+                    return;
+                }
+                Toast.makeText(this,
+                        getString(R.string.format_move_notes_to_folder,
+                                state.getPendingAffectedCount(),
+                                state.getPendingDestinationFolderName()),
+                        Toast.LENGTH_SHORT).show();
+                mModeCallBack.finishActionMode();
+                return;
+            case FOLDER_CREATED:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (!state.isPendingOperationSucceeded()) {
+                    Log.e(TAG, "Create folder failed");
+                }
+                return;
+            case FOLDER_RENAMED:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (!state.isPendingOperationSucceeded()) {
+                    Log.e(TAG, "Rename folder failed");
+                }
+                return;
+            case FOLDER_DELETED:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (!state.isPendingOperationSucceeded()) {
+                    Log.e(TAG, "Delete folder failed");
+                    return;
+                }
+                refreshWidgets(state.getPendingWidgetBindings());
+                return;
+            default:
+                return;
+        }
+    }
+
+    private void refreshPendingDeletedWidgets() {
+        if (mPendingDeletedWidgets == null || mPendingDeletedWidgets.isEmpty()) {
+            return;
+        }
+        for (AppWidgetAttribute widget : mPendingDeletedWidgets) {
+            if (widget.widgetId != AppWidgetManager.INVALID_APPWIDGET_ID
+                    && widget.widgetType != Notes.TYPE_WIDGET_INVALIDE) {
+                updateWidget(widget.widgetId, widget.widgetType);
+            }
+        }
+        mPendingDeletedWidgets = null;
+    }
+
+    private void refreshWidgets(List<WidgetBinding> widgetBindings) {
+        if (widgetBindings == null || widgetBindings.isEmpty()) {
+            return;
+        }
+        for (WidgetBinding widget : widgetBindings) {
+            if (widget.getWidgetId() != AppWidgetManager.INVALID_APPWIDGET_ID
+                    && widget.getWidgetType() != Notes.TYPE_WIDGET_INVALIDE) {
+                updateWidget(widget.getWidgetId(), widget.getWidgetType());
+            }
+        }
+    }
+
+    private void showExportResult(ExportedTextFile result) {
+        if (result == null) {
+            return;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        if (result.getState() == ExportedTextFile.ExportState.STORAGE_UNAVAILABLE) {
+            builder.setTitle(getString(R.string.failed_sdcard_export));
+            builder.setMessage(getString(R.string.error_sdcard_unmounted));
+        } else if (result.getState() == ExportedTextFile.ExportState.SUCCESS) {
+            builder.setTitle(getString(R.string.success_sdcard_export));
+            builder.setMessage(getString(R.string.format_exported_file_location,
+                    result.getFileName(), result.getDirectory()));
+        } else {
+            builder.setTitle(getString(R.string.failed_sdcard_export));
+            builder.setMessage(getString(R.string.error_sdcard_export));
+        }
+        builder.setPositiveButton(android.R.string.ok, null);
+        builder.show();
     }
 
     private void renderTopBar(NotesListViewState state) {
@@ -735,8 +706,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                         builder.setPositiveButton(android.R.string.ok,
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int which) {
-                                        deleteFolder(item.getId());
-                                        startAsyncNotesListQuery();
+                                        mListViewModel.deleteFolder(item.getId());
                                     }
                                 });
                         builder.setNegativeButton(android.R.string.cancel, null);

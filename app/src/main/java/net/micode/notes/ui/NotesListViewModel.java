@@ -7,21 +7,49 @@ import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
 import net.micode.notes.data.Notes;
+import net.micode.notes.domain.model.ExportedTextFile;
+import net.micode.notes.domain.model.FolderDestination;
 import net.micode.notes.domain.model.NoteListItem;
+import net.micode.notes.domain.model.WidgetBinding;
+import net.micode.notes.domain.usecase.list.DeleteNotesUseCase;
+import net.micode.notes.domain.usecase.list.ExportNotesUseCase;
+import net.micode.notes.domain.usecase.list.FolderManagementUseCase;
 import net.micode.notes.domain.usecase.list.LoadNotesUseCase;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class NotesListViewModel extends ViewModel {
     public static final class Factory implements ViewModelProvider.Factory {
         private final LoadNotesUseCase loadNotesUseCase;
+        private final FolderManagementUseCase folderManagementUseCase;
+        private final DeleteNotesUseCase deleteNotesUseCase;
+        private final ExportNotesUseCase exportNotesUseCase;
+        private final Executor backgroundExecutor;
 
-        public Factory(LoadNotesUseCase loadNotesUseCase) {
+        public Factory(LoadNotesUseCase loadNotesUseCase,
+                FolderManagementUseCase folderManagementUseCase,
+                DeleteNotesUseCase deleteNotesUseCase,
+                ExportNotesUseCase exportNotesUseCase) {
+            this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase,
+                    exportNotesUseCase, Executors.newSingleThreadExecutor());
+        }
+
+        public Factory(LoadNotesUseCase loadNotesUseCase,
+                FolderManagementUseCase folderManagementUseCase,
+                DeleteNotesUseCase deleteNotesUseCase,
+                ExportNotesUseCase exportNotesUseCase,
+                Executor backgroundExecutor) {
             this.loadNotesUseCase = loadNotesUseCase;
+            this.folderManagementUseCase = folderManagementUseCase;
+            this.deleteNotesUseCase = deleteNotesUseCase;
+            this.exportNotesUseCase = exportNotesUseCase;
+            this.backgroundExecutor = backgroundExecutor;
         }
 
         @NonNull
@@ -29,23 +57,44 @@ public final class NotesListViewModel extends ViewModel {
         @SuppressWarnings("unchecked")
         public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
             if (modelClass.isAssignableFrom(NotesListViewModel.class)) {
-                return (T) new NotesListViewModel(loadNotesUseCase);
+                return (T) new NotesListViewModel(loadNotesUseCase, folderManagementUseCase,
+                        deleteNotesUseCase, exportNotesUseCase, backgroundExecutor);
             }
             throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
         }
     }
 
     private final LoadNotesUseCase loadNotesUseCase;
-    private final ExecutorService backgroundExecutor = Executors.newSingleThreadExecutor();
+    private final FolderManagementUseCase folderManagementUseCase;
+    private final DeleteNotesUseCase deleteNotesUseCase;
+    private final ExportNotesUseCase exportNotesUseCase;
+    private final Executor backgroundExecutor;
     private final MutableLiveData<NotesListViewState> viewState =
             new MutableLiveData<NotesListViewState>(NotesListViewState.root(
                     Collections.<NoteItemData>emptyList()));
 
     private NotesListViewState currentState = NotesListViewState.root(
             Collections.<NoteItemData>emptyList());
+    private long nextPendingActionId = 1L;
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase) {
+        this(loadNotesUseCase, null, null, null, Executors.newSingleThreadExecutor());
+    }
+
+    public NotesListViewModel(LoadNotesUseCase loadNotesUseCase, Executor backgroundExecutor) {
+        this(loadNotesUseCase, null, null, null, backgroundExecutor);
+    }
+
+    public NotesListViewModel(LoadNotesUseCase loadNotesUseCase,
+            FolderManagementUseCase folderManagementUseCase,
+            DeleteNotesUseCase deleteNotesUseCase,
+            ExportNotesUseCase exportNotesUseCase,
+            Executor backgroundExecutor) {
         this.loadNotesUseCase = loadNotesUseCase;
+        this.folderManagementUseCase = folderManagementUseCase;
+        this.deleteNotesUseCase = deleteNotesUseCase;
+        this.exportNotesUseCase = exportNotesUseCase;
+        this.backgroundExecutor = backgroundExecutor;
     }
 
     public LiveData<NotesListViewState> getViewState() {
@@ -78,14 +127,162 @@ public final class NotesListViewModel extends ViewModel {
         return true;
     }
 
-    public void renameCurrentFolder(String name) {
-        currentState = currentState.withCurrentFolderName(name);
+    public boolean folderNameExists(String name) {
+        return folderManagementUseCase != null && folderManagementUseCase.folderNameExists(name);
+    }
+
+    public int getUserFolderCount() {
+        return folderManagementUseCase == null ? 0 : folderManagementUseCase.getUserFolderCount();
+    }
+
+    public void createFolder(final String name) {
+        if (folderManagementUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                long folderId = folderManagementUseCase.createFolder(name);
+                List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
+                publishPendingAction(stateSnapshot, items,
+                        NotesListViewState.PendingAction.FOLDER_CREATED,
+                        Collections.<FolderDestination>emptyList(), null, folderId > 0L,
+                        0, name, Collections.<WidgetBinding>emptyList());
+            }
+        });
+    }
+
+    public void renameFolder(final long folderId, final String name) {
+        if (folderManagementUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                boolean renamed = folderManagementUseCase.renameFolder(folderId, name);
+                List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
+                NotesListViewState updatedState = new NotesListViewState(
+                        stateSnapshot.getCurrentFolderId(), stateSnapshot.getMode(),
+                        stateSnapshot.getCurrentFolderName(), items);
+                if (renamed && folderId == stateSnapshot.getCurrentFolderId()) {
+                    updatedState = updatedState.withCurrentFolderName(name);
+                }
+                publishPendingAction(updatedState,
+                        NotesListViewState.PendingAction.FOLDER_RENAMED,
+                        Collections.<FolderDestination>emptyList(), null, renamed,
+                        0, name, Collections.<WidgetBinding>emptyList());
+            }
+        });
+    }
+
+    public void deleteFolder(final long folderId) {
+        if (folderManagementUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<WidgetBinding> bindings = new ArrayList<WidgetBinding>(
+                        folderManagementUseCase.deleteFolder(folderId));
+                List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
+                publishPendingAction(stateSnapshot, items,
+                        NotesListViewState.PendingAction.FOLDER_DELETED,
+                        Collections.<FolderDestination>emptyList(), null, true,
+                        0, null, bindings);
+            }
+        });
+    }
+
+    public void requestMoveDestinations() {
+        if (folderManagementUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                List<FolderDestination> folders = folderManagementUseCase.getFolderDestinations(
+                        stateSnapshot.getCurrentFolderId(), !stateSnapshot.isRootMode());
+                publishPendingAction(stateSnapshot, stateSnapshot.getItems(),
+                        NotesListViewState.PendingAction.SHOW_MOVE_DESTINATIONS, folders,
+                        null, !folders.isEmpty(), 0, null,
+                        Collections.<WidgetBinding>emptyList());
+            }
+        });
+    }
+
+    public void requestExport() {
+        if (exportNotesUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                ExportedTextFile result = exportNotesUseCase.exportToText();
+                publishPendingAction(stateSnapshot, stateSnapshot.getItems(),
+                        NotesListViewState.PendingAction.SHOW_EXPORT_RESULT,
+                        Collections.<FolderDestination>emptyList(), result,
+                        result != null && result.getState() == ExportedTextFile.ExportState.SUCCESS,
+                        0, null, Collections.<WidgetBinding>emptyList());
+            }
+        });
+    }
+
+    public void moveNotes(final Set<Long> noteIds, final long folderId,
+            final String folderName, final int affectedCount) {
+        if (folderManagementUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                boolean moved = folderManagementUseCase.moveNotes(noteIds, folderId);
+                List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
+                publishPendingAction(stateSnapshot, items,
+                        NotesListViewState.PendingAction.MOVE_COMPLETED,
+                        Collections.<FolderDestination>emptyList(), null, moved,
+                        affectedCount, folderName,
+                        Collections.<WidgetBinding>emptyList());
+            }
+        });
+    }
+
+    public void deleteNotes(final Set<Long> noteIds) {
+        if (deleteNotesUseCase == null) {
+            return;
+        }
+        final NotesListViewState stateSnapshot = currentState;
+        backgroundExecutor.execute(new Runnable() {
+            @Override
+            public void run() {
+                boolean deleted = deleteNotesUseCase.delete(noteIds);
+                List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
+                publishPendingAction(stateSnapshot, items,
+                        NotesListViewState.PendingAction.DELETE_COMPLETED,
+                        Collections.<FolderDestination>emptyList(), null, deleted, 0, null,
+                        Collections.<WidgetBinding>emptyList());
+            }
+        });
+    }
+
+    public void markPendingActionHandled(long actionId) {
+        if (currentState.getPendingActionId() != actionId) {
+            return;
+        }
+        currentState = currentState.withoutPendingAction();
         viewState.setValue(currentState);
     }
 
     @Override
     protected void onCleared() {
-        backgroundExecutor.shutdown();
+        if (backgroundExecutor instanceof ExecutorService) {
+            ((ExecutorService) backgroundExecutor).shutdown();
+        }
     }
 
     private void loadState(final long folderId, final NotesListViewState.ScreenMode mode,
@@ -93,16 +290,54 @@ public final class NotesListViewModel extends ViewModel {
         backgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
-                List<NoteListItem> items = loadNotesUseCase.load(folderId);
-                ArrayList<NoteItemData> uiItems = new ArrayList<NoteItemData>();
-                if (items != null) {
-                    for (NoteListItem item : items) {
-                        uiItems.add(new NoteItemData(item));
-                    }
-                }
+                List<NoteItemData> uiItems = loadItems(folderId);
                 currentState = new NotesListViewState(folderId, mode, folderName, uiItems);
                 viewState.postValue(currentState);
             }
         });
+    }
+
+    private List<NoteItemData> loadItems(long folderId) {
+        List<NoteListItem> items = loadNotesUseCase.load(folderId);
+        ArrayList<NoteItemData> uiItems = new ArrayList<NoteItemData>();
+        if (items != null) {
+            for (NoteListItem item : items) {
+                uiItems.add(new NoteItemData(item));
+            }
+        }
+        return uiItems;
+    }
+
+    private void publishPendingAction(NotesListViewState stateSnapshot, List<NoteItemData> items,
+            NotesListViewState.PendingAction action,
+            List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
+            boolean operationSucceeded, int affectedCount, String destinationFolderName) {
+        publishPendingAction(stateSnapshot, items, action, folderDestinations, exportedFile,
+            operationSucceeded, affectedCount, destinationFolderName,
+            Collections.<WidgetBinding>emptyList());
+        }
+
+        private void publishPendingAction(NotesListViewState stateSnapshot, List<NoteItemData> items,
+            NotesListViewState.PendingAction action,
+            List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
+            boolean operationSucceeded, int affectedCount, String destinationFolderName,
+            List<WidgetBinding> widgetBindings) {
+        currentState = new NotesListViewState(stateSnapshot.getCurrentFolderId(),
+                stateSnapshot.getMode(), stateSnapshot.getCurrentFolderName(), items,
+                nextPendingActionId++, action, folderDestinations, exportedFile,
+            operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
+        viewState.postValue(currentState);
+        }
+
+        private void publishPendingAction(NotesListViewState state,
+            NotesListViewState.PendingAction action,
+            List<FolderDestination> folderDestinations, ExportedTextFile exportedFile,
+            boolean operationSucceeded, int affectedCount, String destinationFolderName,
+            List<WidgetBinding> widgetBindings) {
+        currentState = new NotesListViewState(state.getCurrentFolderId(), state.getMode(),
+            state.getCurrentFolderName(), state.getItems(), nextPendingActionId++, action,
+            folderDestinations, exportedFile, operationSucceeded, affectedCount,
+            destinationFolderName, widgetBindings);
+        viewState.postValue(currentState);
     }
 }

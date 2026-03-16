@@ -138,7 +138,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private String mUserQuery;
     private Pattern mPattern;
     private boolean mRenderingEditorContent;
-    private long mLastHandledUiEventId;
 
     private static final class EditorContentSnapshot {
         private final String text;
@@ -401,7 +400,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
         mEditTextList = (LinearLayout) findViewById(R.id.note_edit_list);
         mNoteEditViewModel.getViewState().observe(this, this::renderViewState);
-        mNoteEditViewModel.getUiEvent().observe(this, this::handleUiEvent);
     }
 
     @Override
@@ -866,25 +864,28 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         applyEditorColors(state);
         showAlertHeader(state);
         invalidateOptionsMenu();
+        handlePendingAction(state);
     }
 
-    private void handleUiEvent(NoteEditUiEvent event) {
-        if (event == null || event.getId() <= mLastHandledUiEventId) {
+    private void handlePendingAction(NoteEditViewState state) {
+        if (state.getPendingAction() == NoteEditViewState.PendingAction.NONE) {
             return;
         }
-        mLastHandledUiEventId = event.getId();
-        if (event.shouldSetResultOk()) {
+        long actionId = state.getPendingActionId();
+        if (state.pendingActionSetsResultOk()) {
             setResult(RESULT_OK);
         }
-        if (event.getType() == NoteEditUiEvent.Type.OPEN_NEW_NOTE) {
+        if (state.getPendingAction() == NoteEditViewState.PendingAction.OPEN_NEW_NOTE) {
+            mNoteEditViewModel.markPendingActionHandled(actionId);
             Intent intent = new Intent(this, NoteEditActivity.class);
             intent.setAction(Intent.ACTION_INSERT_OR_EDIT);
-            intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, event.getFolderId());
+            intent.putExtra(Notes.INTENT_EXTRA_FOLDER_ID, state.getPendingActionFolderId());
             startActivity(intent);
             finish();
             return;
         }
-        if (event.getType() == NoteEditUiEvent.Type.CLOSE_EDITOR) {
+        if (state.getPendingAction() == NoteEditViewState.PendingAction.CLOSE_EDITOR) {
+            mNoteEditViewModel.markPendingActionHandled(actionId);
             finish();
         }
     }

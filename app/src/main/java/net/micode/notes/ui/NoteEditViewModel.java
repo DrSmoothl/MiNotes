@@ -50,11 +50,13 @@ public final class NoteEditViewModel extends ViewModel {
     private final ReminderScheduler reminderScheduler;
     private final WidgetNotifier widgetNotifier;
     private final MutableLiveData<NoteEditViewState> viewState = new MutableLiveData<NoteEditViewState>();
-    private final MutableLiveData<NoteEditUiEvent> uiEvent = new MutableLiveData<NoteEditUiEvent>();
 
     private NoteEditorSession noteSession;
     private String userQuery = "";
-    private long nextUiEventId = 1L;
+    private long nextPendingActionId = 1L;
+    private NoteEditViewState.PendingAction pendingAction = NoteEditViewState.PendingAction.NONE;
+    private boolean pendingActionSetsResultOk;
+    private long pendingActionFolderId;
 
     public NoteEditViewModel(StartNoteEditorSessionUseCase startNoteEditorSessionUseCase,
             DeleteNoteUseCase deleteNoteUseCase,
@@ -72,10 +74,6 @@ public final class NoteEditViewModel extends ViewModel {
 
     public NoteEditViewState getCurrentState() {
         return viewState.getValue();
-    }
-
-    public LiveData<NoteEditUiEvent> getUiEvent() {
-        return uiEvent;
     }
 
     public NoteEditorSession getNoteSession() {
@@ -190,13 +188,13 @@ public final class NoteEditViewModel extends ViewModel {
     public void requestClose(String workingText) {
         boolean saved = save(workingText);
         long folderId = noteSession == null ? 0L : noteSession.getFolderId();
-        dispatchUiEvent(NoteEditUiEvent.Type.CLOSE_EDITOR, saved, folderId);
+        dispatchPendingAction(NoteEditViewState.PendingAction.CLOSE_EDITOR, saved, folderId);
     }
 
     public void requestCreateNew(String workingText) {
         boolean saved = save(workingText);
         long folderId = noteSession == null ? 0L : noteSession.getFolderId();
-        dispatchUiEvent(NoteEditUiEvent.Type.OPEN_NEW_NOTE, saved, folderId);
+        dispatchPendingAction(NoteEditViewState.PendingAction.OPEN_NEW_NOTE, saved, folderId);
     }
 
     public boolean deleteCurrent() {
@@ -216,7 +214,18 @@ public final class NoteEditViewModel extends ViewModel {
     public void requestDeleteAndClose() {
         deleteCurrent();
         long folderId = noteSession == null ? 0L : noteSession.getFolderId();
-        dispatchUiEvent(NoteEditUiEvent.Type.CLOSE_EDITOR, false, folderId);
+        dispatchPendingAction(NoteEditViewState.PendingAction.CLOSE_EDITOR, false, folderId);
+    }
+
+    public void markPendingActionHandled(long actionId) {
+        NoteEditViewState state = viewState.getValue();
+        if (state == null || state.getPendingActionId() != actionId) {
+            return;
+        }
+        pendingAction = NoteEditViewState.PendingAction.NONE;
+        pendingActionSetsResultOk = false;
+        pendingActionFolderId = 0L;
+        publishState();
     }
 
     public void refreshState() {
@@ -239,8 +248,13 @@ public final class NoteEditViewModel extends ViewModel {
         widgetNotifier.refresh(noteSession.getWidgetId(), noteSession.getWidgetType());
     }
 
-    private void dispatchUiEvent(NoteEditUiEvent.Type type, boolean setResultOk, long folderId) {
-        uiEvent.setValue(new NoteEditUiEvent(nextUiEventId++, type, setResultOk, folderId));
+    private void dispatchPendingAction(NoteEditViewState.PendingAction action,
+            boolean setResultOk, long folderId) {
+        pendingAction = action;
+        pendingActionSetsResultOk = setResultOk;
+        pendingActionFolderId = folderId;
+        nextPendingActionId++;
+        publishState();
     }
 
     private void publishState() {
@@ -265,6 +279,10 @@ public final class NoteEditViewModel extends ViewModel {
                 hasContent,
                 noteSession.existsInDatabase() || hasContent,
                 hasContent,
-                true));
+                true,
+                pendingAction == NoteEditViewState.PendingAction.NONE ? 0L : nextPendingActionId - 1,
+                pendingAction,
+                pendingActionSetsResultOk,
+                pendingActionFolderId));
     }
 }
