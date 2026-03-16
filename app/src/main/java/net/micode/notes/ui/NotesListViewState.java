@@ -16,6 +16,7 @@ public final class NotesListViewState {
         SHOW_EXPORT_RESULT,
         DELETE_COMPLETED,
         MOVE_COMPLETED,
+        FOLDER_NAME_CONFLICT,
         FOLDER_CREATED,
         FOLDER_RENAMED,
         FOLDER_DELETED

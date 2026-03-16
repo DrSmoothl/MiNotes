@@ -109,6 +109,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private NoteItemData mFocusNoteDataItem;
     private HashSet<AppWidgetAttribute> mPendingDeletedWidgets;
+    private Dialog mFolderNameDialog;
+    private EditText mFolderNameEditText;
 
     private final ActivityResultLauncher<Intent> mNoteEditorLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
@@ -395,6 +397,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         final AlertDialog.Builder builder = new AlertDialog.Builder(this);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_text, null);
         final EditText etName = (EditText) view.findViewById(R.id.et_foler_name);
+        mFolderNameEditText = etName;
         showSoftInput(etName);
         if (!create) {
             if (mFocusNoteDataItem != null) {
@@ -413,21 +416,17 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 hideSoftInput(etName);
+                clearFolderDialogState();
             }
         });
 
         final Dialog dialog = builder.setView(view).show();
+        mFolderNameDialog = dialog;
         final Button positive = (Button)dialog.findViewById(android.R.id.button1);
         positive.setOnClickListener(new OnClickListener() {
             public void onClick(View v) {
                 hideSoftInput(etName);
                 String name = etName.getText().toString();
-                if (mListViewModel.folderNameExists(name)) {
-                    Toast.makeText(NotesListActivity.this, getString(R.string.folder_exist, name),
-                            Toast.LENGTH_LONG).show();
-                    etName.setSelection(0, etName.length());
-                    return;
-                }
                 if (!create) {
                     if (!TextUtils.isEmpty(name)) {
                         mListViewModel.renameFolder(mFocusNoteDataItem.getId(), name);
@@ -435,7 +434,6 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 } else if (!TextUtils.isEmpty(name)) {
                     mListViewModel.createFolder(name);
                 }
-                dialog.dismiss();
             }
         });
 
@@ -580,17 +578,32 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                         Toast.LENGTH_SHORT).show();
                 mModeCallBack.finishActionMode();
                 return;
+            case FOLDER_NAME_CONFLICT:
+                mListViewModel.markPendingActionHandled(actionId);
+                if (mFolderNameEditText != null) {
+                    mFolderNameEditText.requestFocus();
+                    mFolderNameEditText.setSelection(0, mFolderNameEditText.length());
+                    showSoftInput(mFolderNameEditText);
+                }
+                Toast.makeText(this,
+                        getString(R.string.folder_exist, state.getPendingDestinationFolderName()),
+                        Toast.LENGTH_LONG).show();
+                return;
             case FOLDER_CREATED:
                 mListViewModel.markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Create folder failed");
+                    return;
                 }
+                dismissFolderNameDialog();
                 return;
             case FOLDER_RENAMED:
                 mListViewModel.markPendingActionHandled(actionId);
                 if (!state.isPendingOperationSucceeded()) {
                     Log.e(TAG, "Rename folder failed");
+                    return;
                 }
+                dismissFolderNameDialog();
                 return;
             case FOLDER_DELETED:
                 mListViewModel.markPendingActionHandled(actionId);
@@ -616,6 +629,18 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             }
         }
         mPendingDeletedWidgets = null;
+    }
+
+    private void dismissFolderNameDialog() {
+        if (mFolderNameDialog != null && mFolderNameDialog.isShowing()) {
+            mFolderNameDialog.dismiss();
+        }
+        clearFolderDialogState();
+    }
+
+    private void clearFolderDialogState() {
+        mFolderNameDialog = null;
+        mFolderNameEditText = null;
     }
 
     private void refreshWidgets(List<WidgetBinding> widgetBindings) {

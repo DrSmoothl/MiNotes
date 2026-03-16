@@ -127,10 +127,6 @@ public final class NotesListViewModel extends ViewModel {
         return true;
     }
 
-    public boolean folderNameExists(String name) {
-        return folderManagementUseCase != null && folderManagementUseCase.folderNameExists(name);
-    }
-
     public void createFolder(final String name) {
         if (folderManagementUseCase == null) {
             return;
@@ -139,6 +135,13 @@ public final class NotesListViewModel extends ViewModel {
         backgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
+                if (folderManagementUseCase.folderNameExists(name)) {
+                    publishPendingAction(stateSnapshot, stateSnapshot.getItems(),
+                            NotesListViewState.PendingAction.FOLDER_NAME_CONFLICT,
+                            Collections.<FolderDestination>emptyList(), null, false,
+                            0, name, Collections.<WidgetBinding>emptyList());
+                    return;
+                }
                 long folderId = folderManagementUseCase.createFolder(name);
                 List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
                 publishPendingAction(stateSnapshot, items,
@@ -157,12 +160,19 @@ public final class NotesListViewModel extends ViewModel {
         backgroundExecutor.execute(new Runnable() {
             @Override
             public void run() {
+                if (folderManagementUseCase.folderNameExists(name)) {
+                    publishPendingAction(stateSnapshot, stateSnapshot.getItems(),
+                            NotesListViewState.PendingAction.FOLDER_NAME_CONFLICT,
+                            Collections.<FolderDestination>emptyList(), null, false,
+                            0, name, Collections.<WidgetBinding>emptyList());
+                    return;
+                }
                 boolean renamed = folderManagementUseCase.renameFolder(folderId, name);
                 List<NoteItemData> items = loadItems(stateSnapshot.getCurrentFolderId());
                 NotesListViewState updatedState = new NotesListViewState(
                         stateSnapshot.getCurrentFolderId(), stateSnapshot.getMode(),
-                    stateSnapshot.getCurrentFolderName(), items,
-                    hasUserFolders());
+                        stateSnapshot.getCurrentFolderName(), items,
+                        hasUserFolders());
                 if (renamed && folderId == stateSnapshot.getCurrentFolderId()) {
                     updatedState = updatedState.withCurrentFolderName(name);
                 }

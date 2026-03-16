@@ -102,6 +102,22 @@ public final class NotesListViewModelTest {
                 viewModel.getCurrentState().getPendingExportedFile().getState());
     }
 
+        @Test
+        public void createFolder_withDuplicateNamePublishesConflictAction() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        repository.folderNameExists = true;
+        repository.userFolderCount = 1;
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+
+        viewModel.createFolder("Archive");
+
+        assertEquals(NotesListViewState.PendingAction.FOLDER_NAME_CONFLICT,
+            viewModel.getCurrentState().getPendingAction());
+        assertEquals("Archive", viewModel.getCurrentState().getPendingDestinationFolderName());
+        }
+
     @Test
     public void renameFolder_updatesCurrentFolderNameAndPublishesResult() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
@@ -150,6 +166,7 @@ public final class NotesListViewModelTest {
         private List<FolderDestination> folderDestinations = Collections.emptyList();
         private Set<WidgetBinding> widgets = Collections.emptySet();
         private int userFolderCount;
+        private boolean folderNameExists;
         private boolean renameFolderCalled;
         private boolean deleteNotesCalled;
 
@@ -175,7 +192,7 @@ public final class NotesListViewModelTest {
 
         @Override
         public boolean isVisibleFolderName(String name) {
-            return false;
+            return folderNameExists;
         }
 
         @Override
