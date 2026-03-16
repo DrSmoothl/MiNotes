@@ -367,6 +367,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private void initResources() {
         mToolbar = (MaterialToolbar) findViewById(R.id.top_app_bar);
         setSupportActionBar(mToolbar);
+        EdgeToEdgeInsets.applyTopInset(this, mToolbar);
         mToolbar.setTitle(" ");
         mToolbar.setNavigationIcon(AppCompatResources.getDrawable(this,
                 androidx.appcompat.R.drawable.abc_ic_ab_back_material));

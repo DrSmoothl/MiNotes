@@ -24,6 +24,13 @@
     <string name="widget_under_visit_mode">訪客模式下，便籤內容不可見</string>
     <string name="notelist_string_info">...</string>
     <string name="notelist_menu_new">新建便簽</string>
+    <string name="notes_search_screen_title">搜尋便簽</string>
+    <string name="notes_search_results_hint">在全部本地便簽裡快速搜尋。</string>
+    <string name="notes_search_idle_title">快速找到筆記</string>
+    <string name="notes_search_idle_message">輸入標題、片段或關鍵字，立刻篩出對應便簽。</string>
+    <string name="notes_search_empty_title">沒有找到結果</string>
+    <string name="notes_search_empty_message">換個關鍵字，或試試更短的片段。</string>
+    <string name="notes_search_untitled_note">未命名便簽</string>
     <string name="delete_remind_time_message">成功刪除提醒</string>
     <string name="set_remind_time_message">創建提醒</string>
     <string name="note_alert_expired">已過期</string>

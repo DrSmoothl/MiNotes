@@ -38,6 +38,7 @@ public class NotesPreferenceActivity extends AppCompatActivity {
         setContentView(R.layout.activity_preferences);
 
         MaterialToolbar toolbar = findViewById(R.id.preferences_toolbar);
+        EdgeToEdgeInsets.applyTopInset(this, toolbar);
         toolbar.setNavigationOnClickListener(view -> finish());
 
         final SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);

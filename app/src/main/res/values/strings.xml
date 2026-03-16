@@ -35,6 +35,13 @@
      <string name="notes_editor_new">Compose note</string>
      <string name="notes_editor_existing">Editing note</string>
      <string name="notes_editor_hint">Write freely, or switch to checklist mode when structure matters.</string>
+     <string name="notes_search_screen_title">Search notes</string>
+     <string name="notes_search_results_hint">Search across every local note.</string>
+     <string name="notes_search_idle_title">Find a note fast</string>
+     <string name="notes_search_idle_message">Type a title, phrase, or keyword to search your local notes.</string>
+     <string name="notes_search_empty_title">No matches yet</string>
+     <string name="notes_search_empty_message">Try a different keyword or a shorter phrase.</string>
+     <string name="notes_search_untitled_note">Untitled note</string>
     <string name="delete_remind_time_message">Delete reminder successfully</string>
     <string name="set_remind_time_message">Set reminder</string>
     <string name="note_alert_expired">Expired</string>

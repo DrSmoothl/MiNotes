@@ -59,16 +59,12 @@
                 <data android:mimeType="vnd.android.cursor.item/text_note" />
                 <data android:mimeType="vnd.android.cursor.item/call_note" />
             </intent-filter>
-
-            <intent-filter>
-                <action android:name="android.intent.action.SEARCH" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.app.searchable"
-                android:resource="@xml/searchable" />
         </activity>
+
+        <activity
+            android:name=".ui.SearchNotesActivity"
+            android:exported="false"
+            android:theme="@style/NotesModernTheme" />
 
         <provider
             android:name="net.micode.notes.data.NotesProvider"
@@ -130,9 +126,5 @@
             android:label="@string/preferences_title"
             android:launchMode="singleTop"
             android:theme="@style/NotesSettingsTheme" />
-
-        <meta-data
-            android:name="android.app.default_searchable"
-            android:value=".ui.NoteEditActivity" />
     </application>
 </manifest>

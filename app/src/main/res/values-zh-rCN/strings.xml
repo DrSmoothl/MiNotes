@@ -35,6 +35,13 @@
     <string name="notes_editor_new">写一条新便签</string>
     <string name="notes_editor_existing">正在编辑</string>
     <string name="notes_editor_hint">自由输入，或者在需要结构时切换到清单模式。</string>
+    <string name="notes_search_screen_title">搜索便签</string>
+    <string name="notes_search_results_hint">在全部本地便签里快速搜索。</string>
+    <string name="notes_search_idle_title">快速找到笔记</string>
+    <string name="notes_search_idle_message">输入标题、片段或关键词，马上筛出对应便签。</string>
+    <string name="notes_search_empty_title">没有找到结果</string>
+    <string name="notes_search_empty_message">换个关键词，或者试试更短的片段。</string>
+    <string name="notes_search_untitled_note">未命名便签</string>
     <string name="delete_remind_time_message">成功删除提醒</string>
     <string name="set_remind_time_message">创建提醒</string>
     <string name="note_alert_expired">已过期</string>

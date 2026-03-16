@@ -139,6 +139,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 .get(NotesListViewModel.class);
         mToolbar = (MaterialToolbar) findViewById(R.id.top_app_bar);
         setSupportActionBar(mToolbar);
+        EdgeToEdgeInsets.applyTopInset(this, mToolbar);
         mToolbar.setNavigationOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -333,7 +334,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 createNewNote();
                 break;
             case R.id.button_search_notes:
-                onSearchRequested();
+                openSearchScreen();
                 break;
             case R.id.button_settings:
                 startPreferenceActivity();
@@ -475,7 +476,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 break;
             }
             case R.id.menu_search:
-                onSearchRequested();
+                openSearchScreen();
                 break;
             default:
                 break;
@@ -485,8 +486,12 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     @Override
     public boolean onSearchRequested() {
-        startSearch(null, false, null /* appData */, false);
+        openSearchScreen();
         return true;
+    }
+
+    private void openSearchScreen() {
+        startActivity(new Intent(this, SearchNotesActivity.class));
     }
 
     private void startPreferenceActivity() {
