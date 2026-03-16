@@ -12,6 +12,7 @@ import java.util.List;
 public final class NotesListViewState {
     public enum PendingAction {
         NONE,
+        INTRODUCTION_INIT_FAILED,
         SHOW_MOVE_DESTINATIONS,
         SHOW_EXPORT_RESULT,
         DELETE_COMPLETED,
@@ -166,6 +167,7 @@ public final class NotesListViewState {
     }
 
     public NotesListViewState withoutPendingAction() {
-        return new NotesListViewState(currentFolderId, mode, currentFolderName, items);
+        return new NotesListViewState(currentFolderId, mode, currentFolderName, items,
+                hasUserFolders);
     }
 }

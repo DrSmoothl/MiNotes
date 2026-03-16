@@ -9,16 +9,21 @@ import androidx.arch.core.executor.testing.InstantTaskExecutorRule;
 import net.micode.notes.data.Notes;
 import net.micode.notes.domain.model.ExportedTextFile;
 import net.micode.notes.domain.model.FolderDestination;
+import net.micode.notes.domain.model.NoteEditorSession;
 import net.micode.notes.domain.model.NoteListItem;
 import net.micode.notes.domain.model.ScheduledReminder;
 import net.micode.notes.domain.model.WidgetBinding;
 import net.micode.notes.domain.model.WidgetNoteState;
 import net.micode.notes.domain.repository.BackupRepository;
+import net.micode.notes.domain.repository.IntroductionRepository;
+import net.micode.notes.domain.repository.NoteEditorRepository;
 import net.micode.notes.domain.repository.NoteRepository;
+import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
 import net.micode.notes.domain.usecase.list.DeleteNotesUseCase;
 import net.micode.notes.domain.usecase.list.ExportNotesUseCase;
 import net.micode.notes.domain.usecase.list.FolderManagementUseCase;
 import net.micode.notes.domain.usecase.list.LoadNotesUseCase;
+import net.micode.notes.domain.usecase.startup.InitializeIntroductionNoteUseCase;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -87,6 +92,45 @@ public final class NotesListViewModelTest {
                 viewModel.getCurrentState().getPendingFolderDestinations().get(0).getName());
     }
 
+        @Test
+        public void resolveItemClickAction_inRootModeRoutesFolderAndNote() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+
+        NoteItemData folder = new NoteItemData(new NoteListItem(2L, 0L, 0, 0L, false, 0L,
+            1, Notes.ID_ROOT_FOLDER, "Projects", Notes.TYPE_FOLDER, 0, 0, "", ""));
+        NoteItemData note = new NoteItemData(new NoteListItem(3L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Draft", Notes.TYPE_NOTE, 0, 0, "", ""));
+
+        assertEquals(NotesListViewModel.ItemClickAction.OPEN_FOLDER,
+            viewModel.resolveItemClickAction(folder));
+        assertEquals(NotesListViewModel.ItemClickAction.OPEN_NOTE,
+            viewModel.resolveItemClickAction(note));
+        }
+
+        @Test
+        public void resolveItemClickAction_inFolderModeRejectsFolderItem() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        NoteItemData currentFolder = new NoteItemData(new NoteListItem(9L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Work", Notes.TYPE_FOLDER, 0, 0, "", ""));
+        NoteItemData nestedFolder = new NoteItemData(new NoteListItem(10L, 0L, 0, 0L, false, 0L,
+            0, 9L, "Nested", Notes.TYPE_FOLDER, 0, 0, "", ""));
+        NoteItemData note = new NoteItemData(new NoteListItem(11L, 0L, 0, 0L, false, 0L,
+            0, 9L, "Item", Notes.TYPE_NOTE, 0, 0, "", ""));
+
+        viewModel.openFolder(currentFolder);
+
+        assertEquals(NotesListViewModel.ItemClickAction.NONE,
+            viewModel.resolveItemClickAction(nestedFolder));
+        assertEquals(NotesListViewModel.ItemClickAction.OPEN_NOTE,
+            viewModel.resolveItemClickAction(note));
+        }
+
     @Test
     public void requestExport_publishesExportResultAction() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
@@ -153,6 +197,25 @@ public final class NotesListViewModelTest {
         assertEquals(1, viewModel.getCurrentState().getPendingWidgetBindings().size());
         assertTrue(repository.deleteNotesCalled);
     }
+
+        @Test
+        public void initializeIntroduction_failurePublishesPendingAction() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+            new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+            new ExportNotesUseCase(new FakeBackupRepository()),
+            new InitializeIntroductionNoteUseCase(new FakeIntroductionRepository(false, ""),
+                new StartNoteEditorSessionUseCase(new FakeNoteEditorRepository())),
+            new DirectExecutor());
+
+        viewModel.initializeIntroduction(3);
+
+        assertEquals(NotesListViewState.PendingAction.INTRODUCTION_INIT_FAILED,
+            viewModel.getCurrentState().getPendingAction());
+        assertFalse(viewModel.getCurrentState().hasUserFolders());
+        viewModel.markPendingActionHandled(viewModel.getCurrentState().getPendingActionId());
+        assertFalse(viewModel.getCurrentState().hasUserFolders());
+        }
 
     private static final class DirectExecutor implements Executor {
         @Override
@@ -242,6 +305,151 @@ public final class NotesListViewModelTest {
         public ExportedTextFile exportToText() {
             return new ExportedTextFile(ExportedTextFile.ExportState.SUCCESS, "notes.txt",
                     "/tmp");
+        }
+    }
+
+    private static final class FakeIntroductionRepository implements IntroductionRepository {
+        private final boolean introductionCreated;
+        private final String introductionText;
+
+        private FakeIntroductionRepository(boolean introductionCreated, String introductionText) {
+            this.introductionCreated = introductionCreated;
+            this.introductionText = introductionText;
+        }
+
+        @Override
+        public boolean isIntroductionCreated() {
+            return introductionCreated;
+        }
+
+        @Override
+        public String loadIntroductionText() {
+            return introductionText;
+        }
+
+        @Override
+        public void markIntroductionCreated() {
+        }
+    }
+
+    private static final class FakeNoteEditorRepository implements NoteEditorRepository {
+        @Override
+        public boolean isVisibleNote(long noteId) {
+            return true;
+        }
+
+        @Override
+        public String getSnippet(long noteId) {
+            return "";
+        }
+
+        @Override
+        public long findCallRecordNoteId(String phoneNumber, long callDate) {
+            return 0;
+        }
+
+        @Override
+        public NoteEditorSession loadSession(long noteId) {
+            return new FakeNoteEditorSession();
+        }
+
+        @Override
+        public NoteEditorSession createSession(long folderId, int widgetId, int widgetType,
+                int defaultBgColorId) {
+            return new FakeNoteEditorSession();
+        }
+
+        @Override
+        public NoteEditorSession createCallRecordSession(long folderId, int widgetId,
+                int widgetType, int defaultBgColorId, String phoneNumber, long callDate) {
+            return new FakeNoteEditorSession();
+        }
+
+        @Override
+        public boolean deleteNote(long noteId) {
+            return true;
+        }
+    }
+
+    private static final class FakeNoteEditorSession implements NoteEditorSession {
+        @Override
+        public boolean existsInDatabase() {
+            return false;
+        }
+
+        @Override
+        public boolean save() {
+            return true;
+        }
+
+        @Override
+        public void markDeleted(boolean deleted) {
+        }
+
+        @Override
+        public void setWorkingText(String text) {
+        }
+
+        @Override
+        public void setAlertDate(long date, boolean set) {
+        }
+
+        @Override
+        public void setBgColorId(int id) {
+        }
+
+        @Override
+        public void setCheckListMode(int mode) {
+        }
+
+        @Override
+        public long getNoteId() {
+            return 0;
+        }
+
+        @Override
+        public long getFolderId() {
+            return 0;
+        }
+
+        @Override
+        public long getAlertDate() {
+            return 0;
+        }
+
+        @Override
+        public long getModifiedDate() {
+            return 0;
+        }
+
+        @Override
+        public int getBgColorId() {
+            return 0;
+        }
+
+        @Override
+        public int getCheckListMode() {
+            return 0;
+        }
+
+        @Override
+        public int getWidgetId() {
+            return 0;
+        }
+
+        @Override
+        public int getWidgetType() {
+            return 0;
+        }
+
+        @Override
+        public String getContent() {
+            return "";
+        }
+
+        @Override
+        public boolean hasClockAlert() {
+            return false;
         }
     }
 }

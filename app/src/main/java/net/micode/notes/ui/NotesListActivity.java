@@ -58,7 +58,6 @@ import net.micode.notes.domain.model.ExportedTextFile;
 import net.micode.notes.domain.model.FolderDestination;
 import net.micode.notes.domain.model.WidgetBinding;
 import net.micode.notes.domain.service.WidgetNotifier;
-import net.micode.notes.domain.usecase.startup.InitializeIntroductionNoteUseCase;
 import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.ui.NotesListAdapter.AppWidgetAttribute;
@@ -89,7 +88,6 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     private ModeCallback mModeCallBack;
 
     private WidgetNotifier mWidgetNotifier;
-    private InitializeIntroductionNoteUseCase mInitializeIntroductionNoteUseCase;
 
     private NotesListViewModel mListViewModel;
 
@@ -122,11 +120,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             }
         });
 
-        InitializeIntroductionNoteUseCase.Result result =
-                mInitializeIntroductionNoteUseCase.initializeIfNeeded(ResourceParser.RED);
-        if (result == InitializeIntroductionNoteUseCase.Result.FAILED) {
-            Log.e(TAG, "Initialize introduction note error");
-        }
+        mListViewModel.initializeIntroduction(ResourceParser.RED);
     }
 
     @Override
@@ -138,10 +132,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     private void initResources() {
         NotesApplicationGraph graph = new NotesApplicationGraph(this);
         mWidgetNotifier = graph.widgetNotifier();
-        mInitializeIntroductionNoteUseCase = graph.initializeIntroductionNoteUseCase();
         mListViewModel = new ViewModelProvider(this,
             new NotesListViewModel.Factory(graph.loadNotesUseCase(), graph.folderManagementUseCase(),
-                    graph.deleteNotesUseCase(), graph.exportNotesUseCase()))
+                    graph.deleteNotesUseCase(), graph.exportNotesUseCase(),
+                    graph.initializeIntroductionNoteUseCase()))
                 .get(NotesListViewModel.class);
         mToolbar = (MaterialToolbar) findViewById(R.id.top_app_bar);
         setSupportActionBar(mToolbar);
@@ -487,6 +481,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
         long actionId = state.getPendingActionId();
         switch (state.getPendingAction()) {
+            case INTRODUCTION_INIT_FAILED:
+                mListViewModel.markPendingActionHandled(actionId);
+                Log.e(TAG, "Initialize introduction note error");
+                return;
             case SHOW_MOVE_DESTINATIONS:
                 mListViewModel.markPendingActionHandled(actionId);
                 if (state.getPendingFolderDestinations().isEmpty()) {
@@ -704,25 +702,16 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             return;
         }
 
-        switch (mListViewModel.getCurrentState().getMode()) {
-            case ROOT:
-                if (item.getType() == Notes.TYPE_FOLDER || item.getType() == Notes.TYPE_SYSTEM) {
-                    openFolder(item);
-                } else if (item.getType() == Notes.TYPE_NOTE) {
-                    openNode(item);
-                } else {
-                    Log.e(TAG, "Wrong note type in NOTE_LIST");
-                }
+        switch (mListViewModel.resolveItemClickAction(item)) {
+            case OPEN_FOLDER:
+                openFolder(item);
                 break;
-            case FOLDER:
-            case CALL_RECORD:
-                if (item.getType() == Notes.TYPE_NOTE) {
-                    openNode(item);
-                } else {
-                    Log.e(TAG, "Wrong note type in SUB_FOLDER");
-                }
+            case OPEN_NOTE:
+                openNode(item);
                 break;
+            case NONE:
             default:
+                Log.e(TAG, "Unsupported list item click for current screen state");
                 break;
         }
     }

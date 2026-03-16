@@ -1,8 +1,8 @@
 package net.micode.notes.ui;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.FlowLiveDataConversions;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -15,6 +15,10 @@ import net.micode.notes.domain.service.ReminderScheduler;
 import net.micode.notes.domain.service.WidgetNotifier;
 import net.micode.notes.domain.usecase.editor.DeleteNoteUseCase;
 import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
+
+import kotlinx.coroutines.flow.MutableStateFlow;
+import kotlinx.coroutines.flow.StateFlow;
+import kotlinx.coroutines.flow.StateFlowKt;
 
 public final class NoteEditViewModel extends ViewModel {
     public static final class Factory implements ViewModelProvider.Factory {
@@ -49,7 +53,10 @@ public final class NoteEditViewModel extends ViewModel {
     private final DeleteNoteUseCase deleteNoteUseCase;
     private final ReminderScheduler reminderScheduler;
     private final WidgetNotifier widgetNotifier;
-    private final MutableLiveData<NoteEditViewState> viewState = new MutableLiveData<NoteEditViewState>();
+        private final MutableStateFlow<NoteEditViewState> viewStateFlow =
+            StateFlowKt.MutableStateFlow((NoteEditViewState) null);
+        private final LiveData<NoteEditViewState> viewState =
+            FlowLiveDataConversions.asLiveData(viewStateFlow);
 
     private NoteEditorSession noteSession;
     private String userQuery = "";
@@ -72,8 +79,12 @@ public final class NoteEditViewModel extends ViewModel {
         return viewState;
     }
 
+    public StateFlow<NoteEditViewState> getViewStateFlow() {
+        return viewStateFlow;
+    }
+
     public NoteEditViewState getCurrentState() {
-        return viewState.getValue();
+        return viewStateFlow.getValue();
     }
 
     public NoteEditorSession getNoteSession() {
@@ -236,7 +247,7 @@ public final class NoteEditViewModel extends ViewModel {
     }
 
     public void markPendingActionHandled(long actionId) {
-        NoteEditViewState state = viewState.getValue();
+        NoteEditViewState state = viewStateFlow.getValue();
         if (state == null || state.getPendingActionId() != actionId) {
             return;
         }
@@ -277,12 +288,12 @@ public final class NoteEditViewModel extends ViewModel {
 
     private void publishState() {
         if (noteSession == null) {
-            viewState.setValue(null);
+            viewStateFlow.setValue(null);
             return;
         }
         String content = noteSession.getContent();
         boolean hasContent = content != null && content.trim().length() > 0;
-        viewState.setValue(new NoteEditViewState(
+        viewStateFlow.setValue(new NoteEditViewState(
                 noteSession.existsInDatabase(),
                 noteSession.getModifiedDate(),
                 noteSession.getBgColorId(),

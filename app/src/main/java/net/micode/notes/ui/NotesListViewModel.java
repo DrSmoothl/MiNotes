@@ -1,8 +1,8 @@
 package net.micode.notes.ui;
 
 import androidx.annotation.NonNull;
+import androidx.lifecycle.FlowLiveDataConversions;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -15,6 +15,7 @@ import net.micode.notes.domain.usecase.list.DeleteNotesUseCase;
 import net.micode.notes.domain.usecase.list.ExportNotesUseCase;
 import net.micode.notes.domain.usecase.list.FolderManagementUseCase;
 import net.micode.notes.domain.usecase.list.LoadNotesUseCase;
+import net.micode.notes.domain.usecase.startup.InitializeIntroductionNoteUseCase;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,31 +25,46 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import kotlinx.coroutines.flow.MutableStateFlow;
+import kotlinx.coroutines.flow.StateFlow;
+import kotlinx.coroutines.flow.StateFlowKt;
+
 public final class NotesListViewModel extends ViewModel {
+    public enum ItemClickAction {
+        NONE,
+        OPEN_NOTE,
+        OPEN_FOLDER
+    }
+
     public static final class Factory implements ViewModelProvider.Factory {
         private final LoadNotesUseCase loadNotesUseCase;
         private final FolderManagementUseCase folderManagementUseCase;
         private final DeleteNotesUseCase deleteNotesUseCase;
         private final ExportNotesUseCase exportNotesUseCase;
+        private final InitializeIntroductionNoteUseCase initializeIntroductionNoteUseCase;
         private final Executor backgroundExecutor;
 
         public Factory(LoadNotesUseCase loadNotesUseCase,
                 FolderManagementUseCase folderManagementUseCase,
                 DeleteNotesUseCase deleteNotesUseCase,
-                ExportNotesUseCase exportNotesUseCase) {
+                ExportNotesUseCase exportNotesUseCase,
+                InitializeIntroductionNoteUseCase initializeIntroductionNoteUseCase) {
             this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase,
-                    exportNotesUseCase, Executors.newSingleThreadExecutor());
+                    exportNotesUseCase, initializeIntroductionNoteUseCase,
+                    Executors.newSingleThreadExecutor());
         }
 
         public Factory(LoadNotesUseCase loadNotesUseCase,
                 FolderManagementUseCase folderManagementUseCase,
                 DeleteNotesUseCase deleteNotesUseCase,
                 ExportNotesUseCase exportNotesUseCase,
+                InitializeIntroductionNoteUseCase initializeIntroductionNoteUseCase,
                 Executor backgroundExecutor) {
             this.loadNotesUseCase = loadNotesUseCase;
             this.folderManagementUseCase = folderManagementUseCase;
             this.deleteNotesUseCase = deleteNotesUseCase;
             this.exportNotesUseCase = exportNotesUseCase;
+            this.initializeIntroductionNoteUseCase = initializeIntroductionNoteUseCase;
             this.backgroundExecutor = backgroundExecutor;
         }
 
@@ -58,7 +74,8 @@ public final class NotesListViewModel extends ViewModel {
         public <T extends ViewModel> T create(@NonNull Class<T> modelClass) {
             if (modelClass.isAssignableFrom(NotesListViewModel.class)) {
                 return (T) new NotesListViewModel(loadNotesUseCase, folderManagementUseCase,
-                        deleteNotesUseCase, exportNotesUseCase, backgroundExecutor);
+                        deleteNotesUseCase, exportNotesUseCase,
+                        initializeIntroductionNoteUseCase, backgroundExecutor);
             }
             throw new IllegalArgumentException("Unknown ViewModel class: " + modelClass.getName());
         }
@@ -68,21 +85,24 @@ public final class NotesListViewModel extends ViewModel {
     private final FolderManagementUseCase folderManagementUseCase;
     private final DeleteNotesUseCase deleteNotesUseCase;
     private final ExportNotesUseCase exportNotesUseCase;
+    private final InitializeIntroductionNoteUseCase initializeIntroductionNoteUseCase;
     private final Executor backgroundExecutor;
-    private final MutableLiveData<NotesListViewState> viewState =
-            new MutableLiveData<NotesListViewState>(NotesListViewState.root(
-                    Collections.<NoteItemData>emptyList()));
+    private final MutableStateFlow<NotesListViewState> viewStateFlow =
+            StateFlowKt.MutableStateFlow(NotesListViewState.root(
+                Collections.<NoteItemData>emptyList()));
+    private final LiveData<NotesListViewState> viewState =
+            FlowLiveDataConversions.asLiveData(viewStateFlow);
 
     private NotesListViewState currentState = NotesListViewState.root(
             Collections.<NoteItemData>emptyList());
     private long nextPendingActionId = 1L;
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase) {
-        this(loadNotesUseCase, null, null, null, Executors.newSingleThreadExecutor());
+        this(loadNotesUseCase, null, null, null, null, Executors.newSingleThreadExecutor());
     }
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase, Executor backgroundExecutor) {
-        this(loadNotesUseCase, null, null, null, backgroundExecutor);
+        this(loadNotesUseCase, null, null, null, null, backgroundExecutor);
     }
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase,
@@ -90,10 +110,21 @@ public final class NotesListViewModel extends ViewModel {
             DeleteNotesUseCase deleteNotesUseCase,
             ExportNotesUseCase exportNotesUseCase,
             Executor backgroundExecutor) {
+        this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase, exportNotesUseCase,
+            null, backgroundExecutor);
+        }
+
+        public NotesListViewModel(LoadNotesUseCase loadNotesUseCase,
+            FolderManagementUseCase folderManagementUseCase,
+            DeleteNotesUseCase deleteNotesUseCase,
+            ExportNotesUseCase exportNotesUseCase,
+            InitializeIntroductionNoteUseCase initializeIntroductionNoteUseCase,
+            Executor backgroundExecutor) {
         this.loadNotesUseCase = loadNotesUseCase;
         this.folderManagementUseCase = folderManagementUseCase;
         this.deleteNotesUseCase = deleteNotesUseCase;
         this.exportNotesUseCase = exportNotesUseCase;
+        this.initializeIntroductionNoteUseCase = initializeIntroductionNoteUseCase;
         this.backgroundExecutor = backgroundExecutor;
     }
 
@@ -101,8 +132,44 @@ public final class NotesListViewModel extends ViewModel {
         return viewState;
     }
 
+    public StateFlow<NotesListViewState> getViewStateFlow() {
+        return viewStateFlow;
+    }
+
     public NotesListViewState getCurrentState() {
         return currentState;
+    }
+
+    public ItemClickAction resolveItemClickAction(NoteItemData item) {
+        if (item == null) {
+            return ItemClickAction.NONE;
+        }
+        if (currentState.isRootMode()) {
+            if (item.getType() == Notes.TYPE_FOLDER || item.getType() == Notes.TYPE_SYSTEM) {
+                return ItemClickAction.OPEN_FOLDER;
+            }
+            if (item.getType() == Notes.TYPE_NOTE) {
+                return ItemClickAction.OPEN_NOTE;
+            }
+            return ItemClickAction.NONE;
+        }
+        if (item.getType() == Notes.TYPE_NOTE) {
+            return ItemClickAction.OPEN_NOTE;
+        }
+        return ItemClickAction.NONE;
+    }
+
+    public void initializeIntroduction(int defaultBackgroundColorId) {
+        if (initializeIntroductionNoteUseCase == null) {
+            return;
+        }
+        InitializeIntroductionNoteUseCase.Result result =
+                initializeIntroductionNoteUseCase.initializeIfNeeded(defaultBackgroundColorId);
+        if (result == InitializeIntroductionNoteUseCase.Result.FAILED) {
+            publishPendingAction(currentState, NotesListViewState.PendingAction.INTRODUCTION_INIT_FAILED,
+                    Collections.<FolderDestination>emptyList(), null, false, 0, null,
+                    Collections.<WidgetBinding>emptyList());
+        }
     }
 
     public void refresh() {
@@ -282,7 +349,7 @@ public final class NotesListViewModel extends ViewModel {
             return;
         }
         currentState = currentState.withoutPendingAction();
-        viewState.setValue(currentState);
+        viewStateFlow.setValue(currentState);
     }
 
     @Override
@@ -300,7 +367,7 @@ public final class NotesListViewModel extends ViewModel {
                 List<NoteItemData> uiItems = loadItems(folderId);
                 currentState = new NotesListViewState(folderId, mode, folderName, uiItems,
                         hasUserFolders());
-                viewState.postValue(currentState);
+                viewStateFlow.setValue(currentState);
             }
         });
     }
@@ -339,7 +406,7 @@ public final class NotesListViewModel extends ViewModel {
                 hasUserFolders(), nextPendingActionId++, action, folderDestinations,
                 exportedFile, operationSucceeded, affectedCount, destinationFolderName,
                 widgetBindings);
-        viewState.postValue(currentState);
+        viewStateFlow.setValue(currentState);
     }
 
     private void publishPendingAction(NotesListViewState state,
@@ -351,6 +418,6 @@ public final class NotesListViewModel extends ViewModel {
                 state.getCurrentFolderName(), state.getItems(), hasUserFolders(),
                 nextPendingActionId++, action, folderDestinations, exportedFile,
                 operationSucceeded, affectedCount, destinationFolderName, widgetBindings);
-        viewState.postValue(currentState);
+        viewStateFlow.setValue(currentState);
     }
 }
