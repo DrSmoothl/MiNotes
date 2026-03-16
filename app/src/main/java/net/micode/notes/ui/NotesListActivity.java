@@ -21,7 +21,6 @@ import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextUtils;
@@ -48,7 +47,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.view.ActionMode;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -58,18 +56,13 @@ import net.micode.notes.R;
 import net.micode.notes.data.Notes;
 import net.micode.notes.domain.model.ExportedTextFile;
 import net.micode.notes.domain.model.FolderDestination;
-import net.micode.notes.domain.model.NoteEditorSession;
 import net.micode.notes.domain.model.WidgetBinding;
 import net.micode.notes.domain.service.WidgetNotifier;
-import net.micode.notes.domain.usecase.editor.StartNoteEditorSessionUseCase;
+import net.micode.notes.domain.usecase.startup.InitializeIntroductionNoteUseCase;
 import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.ResourceParser;
 import net.micode.notes.ui.NotesListAdapter.AppWidgetAttribute;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.List;
 
@@ -80,8 +73,6 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     private static final int MENU_FOLDER_VIEW = 1;
 
     private static final int MENU_FOLDER_CHANGE_NAME = 2;
-
-    private static final String PREFERENCE_ADD_INTRODUCTION = "net.micode.notes.introduction";
 
     private NotesListAdapter mNotesListAdapter;
 
@@ -98,8 +89,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     private ModeCallback mModeCallBack;
 
     private WidgetNotifier mWidgetNotifier;
-
-    private StartNoteEditorSessionUseCase mStartNoteEditorSessionUseCase;
+    private InitializeIntroductionNoteUseCase mInitializeIntroductionNoteUseCase;
 
     private NotesListViewModel mListViewModel;
 
@@ -132,57 +122,10 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             }
         });
 
-        /**
-         * Insert an introduction when user firstly use this application
-         */
-        setAppInfoFromRawRes();
-    }
-
-    private void setAppInfoFromRawRes() {
-        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!sp.getBoolean(PREFERENCE_ADD_INTRODUCTION, false)) {
-            StringBuilder sb = new StringBuilder();
-            InputStream in = null;
-            try {
-                 in = getResources().openRawResource(R.raw.introduction);
-                if (in != null) {
-                    InputStreamReader isr = new InputStreamReader(in);
-                    BufferedReader br = new BufferedReader(isr);
-                    char [] buf = new char[1024];
-                    int len = 0;
-                    while ((len = br.read(buf)) > 0) {
-                        sb.append(buf, 0, len);
-                    }
-                } else {
-                    Log.e(TAG, "Read introduction file error");
-                    return;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-                return;
-            } finally {
-                if(in != null) {
-                    try {
-                        in.close();
-                    } catch (IOException e) {
-                        // TODO Auto-generated catch block
-                        e.printStackTrace();
-                    }
-                }
-            }
-
-            NoteEditorSession note = mStartNoteEditorSessionUseCase.startNew(
-                    Notes.ID_ROOT_FOLDER,
-                    AppWidgetManager.INVALID_APPWIDGET_ID,
-                    Notes.TYPE_WIDGET_INVALIDE,
-                    ResourceParser.RED);
-            note.setWorkingText(sb.toString());
-            if (note.save()) {
-                sp.edit().putBoolean(PREFERENCE_ADD_INTRODUCTION, true).commit();
-            } else {
-                Log.e(TAG, "Save introduction note error");
-                return;
-            }
+        InitializeIntroductionNoteUseCase.Result result =
+                mInitializeIntroductionNoteUseCase.initializeIfNeeded(ResourceParser.RED);
+        if (result == InitializeIntroductionNoteUseCase.Result.FAILED) {
+            Log.e(TAG, "Initialize introduction note error");
         }
     }
 
@@ -195,7 +138,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     private void initResources() {
         NotesApplicationGraph graph = new NotesApplicationGraph(this);
         mWidgetNotifier = graph.widgetNotifier();
-        mStartNoteEditorSessionUseCase = graph.startNoteEditorSessionUseCase();
+        mInitializeIntroductionNoteUseCase = graph.initializeIntroductionNoteUseCase();
         mListViewModel = new ViewModelProvider(this,
             new NotesListViewModel.Factory(graph.loadNotesUseCase(), graph.folderManagementUseCase(),
                     graph.deleteNotesUseCase(), graph.exportNotesUseCase()))
