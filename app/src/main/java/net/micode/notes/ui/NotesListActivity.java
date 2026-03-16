@@ -203,7 +203,11 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
 
         public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
-            if (mNotesListAdapter.getSelectedCount() == 0) {
+            NotesListViewModel.SelectionUiState selectionUiState =
+                    mListViewModel.buildSelectionUiState(mFocusNoteDataItem,
+                            mNotesListAdapter.getSelectedCount(),
+                            mNotesListAdapter.isAllSelected());
+            if (selectionUiState.shouldFinishActionMode()) {
                 Toast.makeText(NotesListActivity.this, getString(R.string.menu_select_none),
                         Toast.LENGTH_SHORT).show();
                 return true;
@@ -212,13 +216,13 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             switch (item.getItemId()) {
                 case R.id.delete:
                     mListViewModel.requestDeleteNotesConfirmation(
-                            mNotesListAdapter.getSelectedCount());
+                            selectionUiState.getSelectedCount());
                     return true;
                 case R.id.move:
                     mListViewModel.requestMoveDestinations();
                     return true;
                 case R.id.action_select_all:
-                    mNotesListAdapter.selectAll(!mNotesListAdapter.isAllSelected());
+                    mNotesListAdapter.selectAll(selectionUiState.shouldSelectAllOnToggle());
                     updateMenu(mode, mode.getMenu());
                     return true;
                 default:

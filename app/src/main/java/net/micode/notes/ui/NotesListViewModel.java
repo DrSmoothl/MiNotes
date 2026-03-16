@@ -34,13 +34,16 @@ public final class NotesListViewModel extends ViewModel {
         private final boolean showMoveAction;
         private final boolean useDeselectAllLabel;
         private final boolean finishActionMode;
+        private final boolean selectAllOnToggle;
 
         SelectionUiState(int selectedCount, boolean showMoveAction,
-                boolean useDeselectAllLabel, boolean finishActionMode) {
+                boolean useDeselectAllLabel, boolean finishActionMode,
+                boolean selectAllOnToggle) {
             this.selectedCount = selectedCount;
             this.showMoveAction = showMoveAction;
             this.useDeselectAllLabel = useDeselectAllLabel;
             this.finishActionMode = finishActionMode;
+            this.selectAllOnToggle = selectAllOnToggle;
         }
 
         public int getSelectedCount() {
@@ -57,6 +60,10 @@ public final class NotesListViewModel extends ViewModel {
 
         public boolean shouldFinishActionMode() {
             return finishActionMode;
+        }
+
+        public boolean shouldSelectAllOnToggle() {
+            return selectAllOnToggle;
         }
     }
 
@@ -87,7 +94,7 @@ public final class NotesListViewModel extends ViewModel {
                 InitializeIntroductionNoteUseCase initializeIntroductionNoteUseCase) {
             this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase,
                     exportNotesUseCase, initializeIntroductionNoteUseCase,
-                    new ExecutorBackgroundTaskRunner(Executors.newSingleThreadExecutor()));
+                    BackgroundTaskRunner.singleThreaded());
         }
 
         public Factory(LoadNotesUseCase loadNotesUseCase,
@@ -98,7 +105,7 @@ public final class NotesListViewModel extends ViewModel {
                 Executor backgroundExecutor) {
             this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase,
                     exportNotesUseCase, initializeIntroductionNoteUseCase,
-                    new ExecutorBackgroundTaskRunner(backgroundExecutor));
+                    BackgroundTaskRunner.fromExecutor(backgroundExecutor));
         }
 
         public Factory(LoadNotesUseCase loadNotesUseCase,
@@ -146,12 +153,12 @@ public final class NotesListViewModel extends ViewModel {
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase) {
         this(loadNotesUseCase, null, null, null, null,
-                new ExecutorBackgroundTaskRunner(Executors.newSingleThreadExecutor()));
+            BackgroundTaskRunner.singleThreaded());
     }
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase, Executor backgroundExecutor) {
         this(loadNotesUseCase, null, null, null, null,
-                new ExecutorBackgroundTaskRunner(backgroundExecutor));
+            BackgroundTaskRunner.fromExecutor(backgroundExecutor));
     }
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase,
@@ -160,7 +167,7 @@ public final class NotesListViewModel extends ViewModel {
             ExportNotesUseCase exportNotesUseCase,
             Executor backgroundExecutor) {
         this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase, exportNotesUseCase,
-                null, new ExecutorBackgroundTaskRunner(backgroundExecutor));
+            null, BackgroundTaskRunner.fromExecutor(backgroundExecutor));
     }
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase,
@@ -171,7 +178,7 @@ public final class NotesListViewModel extends ViewModel {
             Executor backgroundExecutor) {
         this(loadNotesUseCase, folderManagementUseCase, deleteNotesUseCase, exportNotesUseCase,
                 initializeIntroductionNoteUseCase,
-                new ExecutorBackgroundTaskRunner(backgroundExecutor));
+            BackgroundTaskRunner.fromExecutor(backgroundExecutor));
     }
 
     public NotesListViewModel(LoadNotesUseCase loadNotesUseCase,
@@ -242,7 +249,7 @@ public final class NotesListViewModel extends ViewModel {
     public SelectionUiState buildSelectionUiState(NoteItemData focusedItem, int selectedCount,
             boolean allSelected) {
         return new SelectionUiState(selectedCount, shouldShowMoveAction(focusedItem), allSelected,
-                selectedCount == 0);
+            selectedCount == 0, !allSelected);
     }
 
     public void initializeIntroduction(int defaultBackgroundColorId) {

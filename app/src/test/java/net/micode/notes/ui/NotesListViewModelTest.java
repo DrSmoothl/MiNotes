@@ -110,6 +110,7 @@ public final class NotesListViewModelTest {
         assertTrue(selectionUiState.shouldShowMoveAction());
         assertTrue(selectionUiState.shouldUseDeselectAllLabel());
         assertFalse(selectionUiState.shouldFinishActionMode());
+        assertFalse(selectionUiState.shouldSelectAllOnToggle());
         }
 
         @Test
