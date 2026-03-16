@@ -128,6 +128,29 @@ public final class NoteEditViewModelTest {
         assertEquals(15L, viewModel.getCurrentState().getPendingActionFolderId());
     }
 
+    @Test
+    public void requestDeleteAndClose_publishesCloseActionWithoutResultOk() {
+        FakeNoteEditorSession session = new FakeNoteEditorSession();
+        session.existsInDatabase = true;
+        session.noteId = 8L;
+        session.folderId = 21L;
+        FakeNoteEditorRepository repository = new FakeNoteEditorRepository(session);
+        NoteEditViewModel viewModel = new NoteEditViewModel(
+                new StartNoteEditorSessionUseCase(repository),
+                new DeleteNoteUseCase(repository),
+                new FakeReminderScheduler(),
+                new FakeWidgetNotifier());
+
+        viewModel.openExisting(8L, "");
+        viewModel.requestDeleteAndClose();
+
+        assertEquals(NoteEditViewState.PendingAction.CLOSE_EDITOR,
+                viewModel.getCurrentState().getPendingAction());
+        assertFalse(viewModel.getCurrentState().pendingActionSetsResultOk());
+        assertEquals(21L, viewModel.getCurrentState().getPendingActionFolderId());
+        assertTrue(session.deleted);
+    }
+
     private static final class FakeNoteEditorRepository implements NoteEditorRepository {
         private final FakeNoteEditorSession session;
         private boolean createCallRecordSessionInvoked;

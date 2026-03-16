@@ -198,8 +198,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         super.onRestoreInstanceState(savedInstanceState);
         if (savedInstanceState != null && savedInstanceState.containsKey(Intent.EXTRA_UID)) {
             mNoteEditViewModel.restoreExisting(savedInstanceState.getLong(Intent.EXTRA_UID));
-            syncSessionFromViewModel();
-            if (mNoteSession == null) {
+            if (!syncSessionFromViewModel()) {
                 finish();
                 return;
             }
@@ -223,14 +222,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             }
             return false;
         }
-        syncSessionFromViewModel();
-        if (mNoteSession == null) {
-            if (request.isExistingNoteRequest()) {
-                redirectToNotesList();
-                showToast(R.string.error_note_not_exist);
-            } else {
-                finish();
-            }
+        if (!ensureSessionAvailable(request.isExistingNoteRequest())) {
             return false;
         }
         if (request.shouldHideKeyboard()) {
@@ -239,6 +231,19 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
             getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
         }
         return true;
+    }
+
+    private boolean ensureSessionAvailable(boolean redirectToListWhenMissing) {
+        if (syncSessionFromViewModel()) {
+            return true;
+        }
+        if (redirectToListWhenMissing) {
+            redirectToNotesList();
+            showToast(R.string.error_note_not_exist);
+        } else {
+            finish();
+        }
+        return false;
     }
 
     private NoteEditLaunchRequest buildLaunchRequest(Intent intent) {
@@ -396,8 +401,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                         || state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
                     return;
                 }
-                mNoteEditViewModel.updateWorkingText(s == null ? "" : s.toString());
-                syncSessionFromViewModel();
+                updateWorkingText(s == null ? "" : s.toString());
             }
         });
         mNoteEditorPanel = findViewById(R.id.sv_note_edit);
@@ -425,8 +429,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void handleBackNavigation() {
-        mNoteEditViewModel.requestClose(pushCurrentEditorContent().text);
-        syncSessionFromViewModel();
+        requestCloseWithContent(getCurrentEditorContent().text);
     }
 
     private void updateScreenHeader() {
@@ -541,8 +544,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
-                                mNoteEditViewModel.setBackgroundColor(BACKGROUND_IDS[which]);
-                                syncSessionFromViewModel();
+                                applyBackgroundColor(BACKGROUND_IDS[which]);
                                 dialog.dismiss();
                             }
                         })
@@ -597,7 +599,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
         NoteEditViewState state = mNoteEditViewModel.getCurrentState();
         if (state != null && state.isCheckListMode()) {
-            renderCheckListDocument(CheckListDocument.fromText(pushCurrentEditorContent().text), null);
+            renderCheckListDocument(CheckListDocument.fromText(getCurrentEditorContent().text), null);
         } else {
             mNoteEditor.setTextAppearance(
                     TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
@@ -628,13 +630,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void createNewNote() {
-        mNoteEditViewModel.requestCreateNew(pushCurrentEditorContent().text);
-        syncSessionFromViewModel();
+        requestCreateNewWithContent(getCurrentEditorContent().text);
     }
 
     private void deleteCurrentNote() {
-        mNoteEditViewModel.requestDeleteAndClose();
-        syncSessionFromViewModel();
+        requestDeleteAndClose();
     }
 
     private void showDeleteNoteConfirmation() {
@@ -655,16 +655,13 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     private void toggleListMode(NoteEditViewState state) {
         int oldMode = state.getCheckListMode();
         int newMode = oldMode == 0 ? TextNote.MODE_CHECK_LIST : 0;
-        EditorContentSnapshot modeSnapshot = pushCurrentEditorContent();
-        mNoteEditViewModel.changeCheckListMode(modeSnapshot.text,
-                modeSnapshot.hasCheckedItems, newMode);
-        syncSessionFromViewModel();
+        EditorContentSnapshot modeSnapshot = getCurrentEditorContent();
+        changeCheckListMode(modeSnapshot.text, modeSnapshot.hasCheckedItems, newMode);
         renderEditorContent(mNoteEditViewModel.getCurrentState());
     }
 
     private void shareCurrentNote() {
-        pushCurrentEditorContent();
-        sendTo(this, mNoteSession.getContent());
+        sendTo(this, getCurrentEditorContent().text);
     }
 
     private void clearReminder() {
@@ -673,15 +670,12 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         }
     }
 
-    private EditorContentSnapshot pushCurrentEditorContent() {
-        EditorContentSnapshot snapshot = collectWorkingText();
-        mNoteEditViewModel.updateWorkingText(snapshot.text);
-        syncSessionFromViewModel();
-        return snapshot;
+    private EditorContentSnapshot getCurrentEditorContent() {
+        return collectWorkingText();
     }
 
     private boolean applyReminderFromCurrentContent(long alertDate, boolean enabled) {
-        boolean applied = mNoteEditViewModel.applyReminder(pushCurrentEditorContent().text,
+        boolean applied = mNoteEditViewModel.applyReminder(getCurrentEditorContent().text,
                 alertDate, enabled);
         syncSessionFromViewModel();
         return applied;
@@ -721,8 +715,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void updateCheckListDocument(CheckListDocument document) {
-        mNoteEditViewModel.updateWorkingText(document.toText());
-        syncSessionFromViewModel();
+        updateWorkingText(document.toText());
     }
 
     private void renderCheckListDocument(CheckListDocument document,
@@ -874,7 +867,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private boolean saveCurrentEditorContent() {
-        boolean saved = mNoteEditViewModel.save(pushCurrentEditorContent().text);
+        boolean saved = mNoteEditViewModel.save(getCurrentEditorContent().text);
         syncSessionFromViewModel();
         return saved;
     }
@@ -903,24 +896,50 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void handlePendingAction(NoteEditViewState state) {
-        if (state.getPendingAction() == NoteEditViewState.PendingAction.NONE) {
+        if (!state.hasPendingAction()) {
             return;
         }
         long actionId = state.getPendingActionId();
         if (state.pendingActionSetsResultOk()) {
             setResult(RESULT_OK);
         }
-        switch (state.getPendingAction()) {
-            case OPEN_NEW_NOTE:
-                openPendingNewNote(actionId, state.getPendingActionFolderId());
-                return;
-            case CLOSE_EDITOR:
-                closeFromPendingAction(actionId);
-                return;
-            case NONE:
-            default:
-                return;
+        if (state.shouldOpenNewNoteAfterHandling()) {
+            openPendingNewNote(actionId, state.getPendingActionFolderId());
+            return;
         }
+        if (state.shouldCloseEditorAfterHandling()) {
+            closeFromPendingAction(actionId);
+        }
+    }
+
+    private void updateWorkingText(String text) {
+        mNoteEditViewModel.updateWorkingText(text);
+        syncSessionFromViewModel();
+    }
+
+    private void applyBackgroundColor(int backgroundId) {
+        mNoteEditViewModel.setBackgroundColor(backgroundId);
+        syncSessionFromViewModel();
+    }
+
+    private void requestCloseWithContent(String content) {
+        mNoteEditViewModel.requestClose(content);
+        syncSessionFromViewModel();
+    }
+
+    private void requestCreateNewWithContent(String content) {
+        mNoteEditViewModel.requestCreateNew(content);
+        syncSessionFromViewModel();
+    }
+
+    private void requestDeleteAndClose() {
+        mNoteEditViewModel.requestDeleteAndClose();
+        syncSessionFromViewModel();
+    }
+
+    private void changeCheckListMode(String text, boolean hasCheckedItems, int newMode) {
+        mNoteEditViewModel.changeCheckListMode(text, hasCheckedItems, newMode);
+        syncSessionFromViewModel();
     }
 
     private void openPendingNewNote(long actionId, long folderId) {
@@ -937,9 +956,10 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         finish();
     }
 
-    private void syncSessionFromViewModel() {
+    private boolean syncSessionFromViewModel() {
         mNoteSession = mNoteEditViewModel.getNoteSession();
         mUserQuery = mNoteEditViewModel.getUserQuery();
+        return mNoteSession != null;
     }
 
     private void showToast(int resId) {

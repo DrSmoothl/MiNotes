@@ -323,12 +323,24 @@ public final class NoteEditViewState {
         return pendingAction;
     }
 
+    public boolean hasPendingAction() {
+        return pendingAction != PendingAction.NONE;
+    }
+
     public boolean pendingActionSetsResultOk() {
         return pendingActionSetsResultOk;
     }
 
     public long getPendingActionFolderId() {
         return pendingActionFolderId;
+    }
+
+    public boolean shouldOpenNewNoteAfterHandling() {
+        return pendingAction == PendingAction.OPEN_NEW_NOTE;
+    }
+
+    public boolean shouldCloseEditorAfterHandling() {
+        return pendingAction == PendingAction.CLOSE_EDITOR;
     }
 
     public NoteEditViewState withPendingAction(long actionId, PendingAction action,
