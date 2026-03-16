@@ -177,7 +177,6 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         });
 
         if (savedInstanceState == null && !initActivityState(getIntent())) {
-            finish();
             return;
         }
     }
@@ -203,7 +202,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (savedInstanceState != null && savedInstanceState.containsKey(Intent.EXTRA_UID)) {
             mNoteEditViewModel.restoreExisting(savedInstanceState.getLong(Intent.EXTRA_UID));
             if (!syncSessionFromViewModel()) {
-                finish();
+                finishEditor();
                 return;
             }
             Log.d(TAG, "Restoring from killed activity");
@@ -214,16 +213,11 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         NoteEditLaunchRequest request = buildLaunchRequest(intent);
         if (!request.isValid()) {
             Log.e(TAG, "Intent not specified action, should not support");
-            finish();
+            finishEditor();
             return false;
         }
         if (!mNoteEditViewModel.launch(request)) {
-            if (request.isExistingNoteRequest()) {
-                redirectToNotesList();
-                showToast(R.string.error_note_not_exist);
-            } else {
-                finish();
-            }
+            handleLaunchFailure(request.isExistingNoteRequest());
             return false;
         }
         if (!ensureSessionAvailable(request.isExistingNoteRequest())) {
@@ -241,13 +235,17 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (syncSessionFromViewModel()) {
             return true;
         }
-        if (redirectToListWhenMissing) {
+        handleLaunchFailure(redirectToListWhenMissing);
+        return false;
+    }
+
+    private void handleLaunchFailure(boolean existingNoteRequest) {
+        if (existingNoteRequest) {
             redirectToNotesList();
             showToast(R.string.error_note_not_exist);
-        } else {
-            finishEditor();
+            return;
         }
-        return false;
+        finishEditor();
     }
 
     private NoteEditLaunchRequest buildLaunchRequest(Intent intent) {

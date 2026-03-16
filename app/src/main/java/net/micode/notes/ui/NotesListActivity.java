@@ -776,18 +776,17 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         return true;
     }
 
-    @Override
-    public void onItemClick(NoteItemData item, int position) {
-        if (position == RecyclerView.NO_POSITION) {
-            return;
+    private boolean handleSelectionModeItemClick(NoteItemData item, int position) {
+        if (!mNotesListAdapter.isInChoiceMode()) {
+            return false;
         }
-        if (mNotesListAdapter.isInChoiceMode()) {
-            if (item.getType() == Notes.TYPE_NOTE) {
-                mModeCallBack.toggleSelection(position);
-            }
-            return;
+        if (item.getType() == Notes.TYPE_NOTE) {
+            mModeCallBack.toggleSelection(position);
         }
+        return true;
+    }
 
+    private void handleRegularItemClick(NoteItemData item) {
         switch (mListViewModel.resolveItemClickAction(item)) {
             case OPEN_FOLDER:
                 openFolder(item);
@@ -802,12 +801,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
     }
 
-    @Override
-    public boolean onItemLongClick(View view, NoteItemData item, int position) {
-        if (position == RecyclerView.NO_POSITION) {
-            return false;
-        }
-        mFocusNoteDataItem = item;
+    private boolean handleItemLongClickAction(View view, NoteItemData item, int position) {
         switch (mListViewModel.resolveItemLongClickAction(item,
                 mNotesListAdapter.isInChoiceMode())) {
             case START_SELECTION:
@@ -819,5 +813,25 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             default:
                 return false;
         }
+    }
+
+    @Override
+    public void onItemClick(NoteItemData item, int position) {
+        if (position == RecyclerView.NO_POSITION) {
+            return;
+        }
+        if (handleSelectionModeItemClick(item, position)) {
+            return;
+        }
+        handleRegularItemClick(item);
+    }
+
+    @Override
+    public boolean onItemLongClick(View view, NoteItemData item, int position) {
+        if (position == RecyclerView.NO_POSITION) {
+            return false;
+        }
+        mFocusNoteDataItem = item;
+        return handleItemLongClickAction(view, item, position);
     }
 }
