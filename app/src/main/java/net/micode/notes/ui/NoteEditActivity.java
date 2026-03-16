@@ -696,9 +696,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         int focusIndex = Math.max(0, request.getIndex() - 1);
         int previousLength = document.getItems().get(focusIndex).getText().length();
         CheckListDocument updatedDocument = document.mergeIntoPrevious(request.getIndex());
-        mNoteEditViewModel.updateWorkingText(updatedDocument.toText());
-        syncSessionFromViewModel();
-        renderCheckListDocument(updatedDocument, new CheckListFocusRequest(focusIndex, previousLength));
+        updateAndRenderCheckListDocument(updatedDocument,
+            new CheckListFocusRequest(focusIndex, previousLength));
     }
 
     public void onSplitRequested(SplitRequest request) {
@@ -711,9 +710,19 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
         CheckListDocument updatedDocument = collectCheckListDocument()
                 .insertUncheckedItem(request.getIndex(), request.getTrailingText());
-        mNoteEditViewModel.updateWorkingText(updatedDocument.toText());
+        updateAndRenderCheckListDocument(updatedDocument,
+                new CheckListFocusRequest(request.getIndex(), 0));
+    }
+
+    private void updateAndRenderCheckListDocument(CheckListDocument document,
+            CheckListFocusRequest focusRequest) {
+        updateCheckListDocument(document);
+        renderCheckListDocument(document, focusRequest);
+    }
+
+    private void updateCheckListDocument(CheckListDocument document) {
+        mNoteEditViewModel.updateWorkingText(document.toText());
         syncSessionFromViewModel();
-        renderCheckListDocument(updatedDocument, new CheckListFocusRequest(request.getIndex(), 0));
     }
 
     private void renderCheckListDocument(CheckListDocument document,
@@ -834,18 +843,16 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private void syncCheckListStateFromViews() {
         NoteEditViewState state = mNoteEditViewModel.getCurrentState();
-        if (state == null || state.getCheckListMode() != TextNote.MODE_CHECK_LIST) {
+        if (state == null || !state.isCheckListMode()) {
             return;
         }
-        CheckListDocument document = collectCheckListDocument();
-        mNoteEditViewModel.updateWorkingText(document.toText());
-        syncSessionFromViewModel();
+        updateCheckListDocument(collectCheckListDocument());
     }
 
     private EditorContentSnapshot collectWorkingText() {
         boolean hasCheckedItems = false;
         NoteEditViewState state = mNoteEditViewModel.getCurrentState();
-        if (state != null && state.getCheckListMode() == TextNote.MODE_CHECK_LIST) {
+        if (state != null && state.isCheckListMode()) {
             CheckListDocument document = collectCheckListDocument();
             return new EditorContentSnapshot(document.toText(), document.hasCheckedItems());
         }
