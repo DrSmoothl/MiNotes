@@ -29,6 +29,37 @@ import kotlinx.coroutines.flow.StateFlow;
 import kotlinx.coroutines.flow.StateFlowKt;
 
 public final class NotesListViewModel extends ViewModel {
+    public static final class SelectionUiState {
+        private final int selectedCount;
+        private final boolean showMoveAction;
+        private final boolean useDeselectAllLabel;
+        private final boolean finishActionMode;
+
+        SelectionUiState(int selectedCount, boolean showMoveAction,
+                boolean useDeselectAllLabel, boolean finishActionMode) {
+            this.selectedCount = selectedCount;
+            this.showMoveAction = showMoveAction;
+            this.useDeselectAllLabel = useDeselectAllLabel;
+            this.finishActionMode = finishActionMode;
+        }
+
+        public int getSelectedCount() {
+            return selectedCount;
+        }
+
+        public boolean shouldShowMoveAction() {
+            return showMoveAction;
+        }
+
+        public boolean shouldUseDeselectAllLabel() {
+            return useDeselectAllLabel;
+        }
+
+        public boolean shouldFinishActionMode() {
+            return finishActionMode;
+        }
+    }
+
     public enum ItemClickAction {
         NONE,
         OPEN_NOTE,
@@ -206,6 +237,12 @@ public final class NotesListViewModel extends ViewModel {
         return focusedItem != null
                 && focusedItem.getParentId() != Notes.ID_CALL_RECORD_FOLDER
                 && hasUserFolders();
+    }
+
+    public SelectionUiState buildSelectionUiState(NoteItemData focusedItem, int selectedCount,
+            boolean allSelected) {
+        return new SelectionUiState(selectedCount, shouldShowMoveAction(focusedItem), allSelected,
+                selectedCount == 0);
     }
 
     public void initializeIntroduction(int defaultBackgroundColorId) {

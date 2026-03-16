@@ -166,7 +166,11 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         public boolean onCreateActionMode(ActionMode mode, Menu menu) {
             getMenuInflater().inflate(R.menu.note_list_options, menu);
             mMoveMenu = menu.findItem(R.id.move);
-            if (!mListViewModel.shouldShowMoveAction(mFocusNoteDataItem)) {
+            NotesListViewModel.SelectionUiState selectionUiState =
+                    mListViewModel.buildSelectionUiState(mFocusNoteDataItem,
+                            mNotesListAdapter.getSelectedCount(),
+                            mNotesListAdapter.isAllSelected());
+            if (!selectionUiState.shouldShowMoveAction()) {
                 mMoveMenu.setVisible(false);
             } else {
                 mMoveMenu.setVisible(true);
@@ -179,12 +183,16 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         }
 
         private void updateMenu(ActionMode mode, Menu menu) {
-            int selectedCount = mNotesListAdapter.getSelectedCount();
-            String format = getResources().getString(R.string.menu_select_title, selectedCount);
+            NotesListViewModel.SelectionUiState selectionUiState =
+                mListViewModel.buildSelectionUiState(mFocusNoteDataItem,
+                    mNotesListAdapter.getSelectedCount(),
+                    mNotesListAdapter.isAllSelected());
+            String format = getResources().getString(R.string.menu_select_title,
+                selectionUiState.getSelectedCount());
             mode.setTitle(format);
             MenuItem item = menu.findItem(R.id.action_select_all);
             if (item != null) {
-                item.setTitle(mNotesListAdapter.isAllSelected()
+            item.setTitle(selectionUiState.shouldUseDeselectAllLabel()
                         ? R.string.menu_deselect_all : R.string.menu_select_all);
             }
         }
@@ -235,7 +243,11 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             if (mActionMode == null) {
                 return;
             }
-            if (mNotesListAdapter.getSelectedCount() == 0) {
+            NotesListViewModel.SelectionUiState selectionUiState =
+                    mListViewModel.buildSelectionUiState(mFocusNoteDataItem,
+                            mNotesListAdapter.getSelectedCount(),
+                            mNotesListAdapter.isAllSelected());
+            if (selectionUiState.shouldFinishActionMode()) {
                 finishActionMode();
             } else {
                 updateMenu(mActionMode, mActionMode.getMenu());

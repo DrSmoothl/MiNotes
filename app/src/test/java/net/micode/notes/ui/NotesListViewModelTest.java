@@ -93,6 +93,26 @@ public final class NotesListViewModelTest {
     }
 
         @Test
+        public void buildSelectionUiState_combinesSelectionAndMoveRules() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        repository.userFolderCount = 1;
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+                new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+                new ExportNotesUseCase(new FakeBackupRepository()), null,
+                new ImmediateBackgroundTaskRunner());
+        NoteItemData note = new NoteItemData(new NoteListItem(3L, 0L, 0, 0L, false, 0L,
+            0, Notes.ID_ROOT_FOLDER, "Draft", Notes.TYPE_NOTE, 0, 0, "", ""));
+
+        NotesListViewModel.SelectionUiState selectionUiState =
+            viewModel.buildSelectionUiState(note, 2, true);
+
+        assertEquals(2, selectionUiState.getSelectedCount());
+        assertTrue(selectionUiState.shouldShowMoveAction());
+        assertTrue(selectionUiState.shouldUseDeselectAllLabel());
+        assertFalse(selectionUiState.shouldFinishActionMode());
+        }
+
+        @Test
         public void resolveItemLongClickAction_routesByItemTypeAndChoiceMode() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
         NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
@@ -356,6 +376,17 @@ public final class NotesListViewModelTest {
         @Override
         public void execute(Runnable command) {
             command.run();
+        }
+    }
+
+    private static final class ImmediateBackgroundTaskRunner implements BackgroundTaskRunner {
+        @Override
+        public void execute(Runnable task) {
+            task.run();
+        }
+
+        @Override
+        public void shutdown() {
         }
     }
 
