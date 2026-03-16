@@ -43,6 +43,36 @@
         <item name="android:textColor">@color/secondary_text_dark</item>
     </style>
 
+    <style name="TextAppearance.Notes.PopupMenu.Item" parent="TextAppearance.AppCompat.Body1">
+        <item name="android:textColor">@color/notes_on_surface</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="Widget.Notes.Toolbar" parent="Widget.Material3.Toolbar">
+        <item name="titleTextColor">@color/notes_on_surface</item>
+        <item name="navigationIconTint">@color/notes_on_surface</item>
+        <item name="subtitleTextColor">@color/notes_on_surface_muted</item>
+    </style>
+
+    <style name="ThemeOverlay.Notes.ToolbarPopup" parent="ThemeOverlay.Material3.Light">
+        <item name="android:popupBackground">@drawable/notes_popup_menu_background</item>
+        <item name="popupMenuStyle">@style/Widget.Notes.PopupMenu</item>
+        <item name="android:textColorPrimary">@color/notes_on_surface</item>
+    </style>
+
+    <style name="ThemeOverlay.Notes.MaterialAlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="materialAlertDialogBodyTextStyle">@style/TextAppearance.Material3.BodyMedium</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/TextAppearance.Material3.TitleLarge</item>
+        <item name="android:windowMinWidthMajor">88%</item>
+        <item name="android:windowMinWidthMinor">88%</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Material3.LargeComponent</item>
+    </style>
+
+    <style name="Widget.Notes.PopupMenu" parent="Widget.AppCompat.PopupMenu.Overflow">
+        <item name="android:popupBackground">@drawable/notes_popup_menu_background</item>
+        <item name="android:itemTextAppearance">@style/TextAppearance.Notes.PopupMenu.Item</item>
+    </style>
+
     <style name="TextAppearanceUnderMenuIcon">
         <item name="android:textSize">@dimen/text_font_size_normal</item>
         <item name="android:textColor">@android:color/black</item>
@@ -68,6 +98,8 @@
         <item name="colorSurfaceContainerHighest">@color/notes_surface_container</item>
         <item name="colorOutlineVariant">@color/notes_outline_soft</item>
         <item name="android:windowBackground">@drawable/notes_app_background</item>
+        <item name="popupMenuStyle">@style/Widget.Notes.PopupMenu</item>
+        <item name="actionOverflowMenuStyle">@style/Widget.Notes.PopupMenu</item>
     </style>
 
     <style name="NotesSettingsTheme" parent="@style/NotesModernTheme" />

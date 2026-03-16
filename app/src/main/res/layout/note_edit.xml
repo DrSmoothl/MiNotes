@@ -31,11 +31,13 @@
 
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/top_app_bar"
+            style="@style/Widget.Notes.Toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="@android:color/transparent"
             android:elevation="0dp"
             android:minHeight="?attr/actionBarSize"
+            app:popupTheme="@style/ThemeOverlay.Notes.ToolbarPopup"
             app:titleTextColor="@color/notes_on_surface" />
 
         <LinearLayout

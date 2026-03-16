@@ -35,6 +35,7 @@
 
             <com.google.android.material.appbar.MaterialToolbar
                 android:id="@+id/top_app_bar"
+                style="@style/Widget.Notes.Toolbar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:backgroundTint="@android:color/transparent"
@@ -42,6 +43,7 @@
                 android:minHeight="?attr/actionBarSize"
                 android:paddingLeft="4dp"
                 android:paddingRight="4dp"
+                app:popupTheme="@style/ThemeOverlay.Notes.ToolbarPopup"
                 app:titleTextColor="@color/notes_on_surface" />
 
             <com.google.android.material.card.MaterialCardView

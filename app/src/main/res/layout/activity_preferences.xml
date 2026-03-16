@@ -8,6 +8,7 @@
 
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/preferences_toolbar"
+        style="@style/Widget.Notes.Toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:backgroundTint="@color/notes_primary_container"
@@ -15,6 +16,7 @@
         android:paddingStart="8dp"
         android:paddingEnd="8dp"
         app:navigationIcon="@android:drawable/ic_menu_revert"
+        app:popupTheme="@style/ThemeOverlay.Notes.ToolbarPopup"
         app:title="@string/preferences_title"
         app:titleTextColor="@color/notes_on_primary_container" />
 

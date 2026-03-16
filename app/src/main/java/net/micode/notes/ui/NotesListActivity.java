@@ -38,6 +38,7 @@ import android.widget.EditText;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.ContextThemeWrapper;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -51,6 +52,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
@@ -361,7 +363,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private void showCreateOrModifyFolderDialog(final boolean create, final long folderId,
             String initialName) {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        final MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this,
+            R.style.ThemeOverlay_Notes_MaterialAlertDialog);
         View view = LayoutInflater.from(this).inflate(R.layout.dialog_edit_text, null);
         final EditText etName = (EditText) view.findViewById(R.id.et_foler_name);
         mFolderNameEditText = etName;
@@ -387,7 +390,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
             }
         });
 
-        final Dialog dialog = builder.setView(view).show();
+        final AlertDialog dialog = builder.setView(view).show();
         mFolderNameDialog = dialog;
         final Button positive = (Button)dialog.findViewById(android.R.id.button1);
         positive.setOnClickListener(new OnClickListener() {
@@ -702,7 +705,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         if (result == null) {
             return;
         }
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this,
+                R.style.ThemeOverlay_Notes_MaterialAlertDialog);
         if (result.getState() == ExportedTextFile.ExportState.STORAGE_UNAVAILABLE) {
             builder.setTitle(getString(R.string.failed_sdcard_export));
             builder.setMessage(getString(R.string.error_sdcard_unmounted));
@@ -755,7 +759,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void showFolderMenu(View anchor, NoteItemData item) {
-        PopupMenu menu = new PopupMenu(this, anchor);
+        PopupMenu menu = new PopupMenu(new ContextThemeWrapper(this,
+            R.style.ThemeOverlay_Notes_ToolbarPopup), anchor);
         menu.getMenu().add(0, MENU_FOLDER_VIEW, 0, R.string.menu_folder_view);
         menu.getMenu().add(0, MENU_FOLDER_DELETE, 1, R.string.menu_folder_delete);
         menu.getMenu().add(0, MENU_FOLDER_CHANGE_NAME, 2, R.string.menu_folder_change_name);
