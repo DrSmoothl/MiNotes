@@ -22,7 +22,7 @@
     <string name="app_widget4x4">Notes 4x4</string>
     <string name="widget_havenot_content">No associated note found, click to create associated note.</string>
     <string name="widget_under_visit_mode">Privacy mode，can not see note content</string>
-    <string name="notelist_string_info">...</string>
+    <string name="notelist_string_info">…</string>
      <string name="notelist_menu_new">Add note</string>
      <string name="notes_home_headline">Local notes, redesigned</string>
      <string name="notes_home_summary">Fast capture, folders, reminders, and widgets in one local-first workspace.</string>
@@ -31,7 +31,10 @@
      <string name="notes_search_shortcut">Search notes</string>
      <string name="notes_settings_shortcut">Open settings</string>
      <string name="notes_create_cta">New note</string>
-     <string name="notes_item_count">%1$d items</string>
+     <plurals name="notes_item_count">
+         <item quantity="one">%1$d item</item>
+         <item quantity="other">%1$d items</item>
+     </plurals>
      <string name="notes_editor_new">Compose note</string>
      <string name="notes_editor_existing">Editing note</string>
      <string name="notes_editor_hint">Write freely, or switch to checklist mode when structure matters.</string>
@@ -47,6 +50,7 @@
     <string name="delete_remind_time_message">Delete reminder successfully</string>
     <string name="set_remind_time_message">Set reminder</string>
     <string name="note_alert_expired">Expired</string>
+    <string name="note_alert_icon_description">Reminder set</string>
     <string name="format_date_ymd">yyyyMMdd</string>
     <string name="format_datetime_mdhm">MMMd kk:mm</string>
     <string name="notealert_ok">Got it</string>
@@ -56,10 +60,12 @@
     <string name="note_link_web">Browse web</string>
     <string name="note_link_other">Open map</string>
     <!-- Text export file information -->
-    <string name="file_path">/MIUI/notes/</string>
-    <string name="file_name_txt_format">notes_%s.txt</string>
+    <string name="file_path" translatable="false">/MIUI/notes/</string>
+    <string name="file_name_txt_format" translatable="false">notes_%s.txt</string>
     <!-- notes list string -->
-    <string name="format_folder_files_count">(%d)</string>
+    <string name="format_folder_files_count" translatable="false">(%d)</string>
+    <string name="format_folder_title" translatable="false">%1$s%2$s</string>
+    <string name="format_header_summary" translatable="false">%1$s %2$s</string>
     <string name="menu_create_folder">New Folder</string>
     <string name="menu_export_text">Export text</string>
     <string name="menu_sync">Sync</string>
@@ -68,7 +74,10 @@
     <string name="menu_search">Search</string>
     <string name="menu_delete">Delete</string>
     <string name="menu_move">Move to folder</string>
-    <string name="menu_select_title">%d selected</string>
+    <plurals name="menu_select_title">
+        <item quantity="one">%d selected</item>
+        <item quantity="other">%d selected</item>
+    </plurals>
     <string name="menu_select_none">Nothing selected, the operation is invalid</string>
     <string name="menu_select_all">Select all</string>
     <string name="menu_deselect_all">Deselect all</string>
@@ -98,9 +107,15 @@
     <string name="info_note_enter_desktop">Note added to home</string>
     <string name="alert_message_delete_folder">Confirm to delete folder and its notes?</string>
     <string name="alert_title_delete">Delete selected notes</string>
-    <string name="alert_message_delete_notes">Confirm to delete the selected %d notes?</string>
+    <plurals name="alert_message_delete_notes">
+        <item quantity="one">Confirm to delete the selected %d note?</item>
+        <item quantity="other">Confirm to delete the selected %d notes?</item>
+    </plurals>
     <string name="alert_message_delete_note">Confirm to delete this note?</string>
-    <string name="format_move_notes_to_folder">Have moved selected %1$d notes to %2$s folder</string>
+    <plurals name="format_move_notes_to_folder">
+        <item quantity="one">Have moved selected %1$d note to %2$s folder</item>
+        <item quantity="other">Have moved selected %1$d notes to %2$s folder</item>
+    </plurals>
     <!-- Error information -->
     <string name="error_sdcard_unmounted">SD card busy, not available now</string>
     <string name="error_sdcard_export">Export failed, please check SD card</string>
@@ -111,7 +126,7 @@
     <string name="failed_sdcard_export">Export fail</string>
     <string name="format_exported_file_location">Export text file (%1$s) to SD (%2$s) directory</string>
     <!-- Sync -->
-    <string name="ticker_syncing">Syncing notes...</string>
+    <string name="ticker_syncing">Syncing notes…</string>
     <string name="ticker_success">Sync is successful</string>
     <string name="ticker_fail">Sync is failed</string>
     <string name="ticker_cancel">Sync is canceled</string>
@@ -119,15 +134,15 @@
     <string name="error_sync_network">Sync failed, please check network and account settings</string>
     <string name="error_sync_internal">Sync failed, internal error occurs</string>
     <string name="error_sync_cancelled">Sync is canceled</string>
-    <string name="sync_progress_login">Logging into %1$s...</string>
-    <string name="sync_progress_init_list">Getting remote note list...</string>
-    <string name="sync_progress_syncing">Synchronize local notes with Google Task...</string>
+    <string name="sync_progress_login">Logging into %1$s…</string>
+    <string name="sync_progress_init_list">Getting remote note list…</string>
+    <string name="sync_progress_syncing">Synchronize local notes with Google Task…</string>
     <!-- Preferences -->
     <string name="preferences_title">Settings</string>
     <string name="preferences_account_title">Sync account</string>
     <string name="preferences_account_summary">Sync notes with google task</string>
     <string name="preferences_last_sync_time">Last sync time %1$s</string>
-    <string name="preferences_last_sync_time_format">yyyy-MM-dd hh:mm:ss</string>
+    <string name="preferences_last_sync_time_format" translatable="false">yyyy-MM-dd hh:mm:ss</string>
     <string name="preferences_add_account">Add account</string>
     <string name="preferences_menu_change_account">Change sync account</string>
     <string name="preferences_menu_remove_account">Remove sync account</string>
@@ -153,7 +168,7 @@
     <string name="search_setting_description">Text in your notes</string>
     <string name="search">Notes</string>
     <string name="datetime_dialog_ok">set</string>
-    <string name="datetime_dialog_cancel">cancel</string>
+    <string name="datetime_dialog_cancel">Cancel</string>
     <plurals name="search_results_title">
          <item quantity="one"><xliff:g id="number" example="1">%1$s</xliff:g> result for \"<xliff:g id="search" example="???">%2$s</xliff:g>\"</item>
         <!-- Case of 0 or 2 or more results. -->

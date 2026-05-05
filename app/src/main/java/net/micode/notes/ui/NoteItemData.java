@@ -59,6 +59,10 @@ public class NoteItemData {
         return mName;
     }
 
+    public String getPhoneNumber() {
+        return mPhoneNumber;
+    }
+
     public long getId() {
         return mId;
     }

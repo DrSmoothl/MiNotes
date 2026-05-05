@@ -62,7 +62,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="6dp"
                         android:text="@string/preferences_bg_random_appear_summary"
-                        android:textColor="#7A6253"
+                        android:textColor="@color/notes_on_surface_muted"
                         android:textSize="14sp" />
                 </LinearLayout>
 

@@ -42,3 +42,6 @@
 - 已整理为标准 Android Gradle 工程
 - 可直接在 Android Studio / IntelliJ IDEA 中导入
 - 已适配 Java 17、AndroidX、Material 和现代 Gradle 工作流
+- app 模块面向 JDK 17、compileSdk/targetSdk 35
+- 界面使用 Google Material Design 组件与 Material 3 DayNight 主题，可跟随系统明暗模式
+- 保留本地便签、搜索、提醒、桌面组件、导出和文件夹功能；文件夹支持创建、重命名、删除，并可将多条便签批量移动到同一文件夹

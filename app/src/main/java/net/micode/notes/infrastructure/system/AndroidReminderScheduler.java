@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 
 import net.micode.notes.data.Notes;
 import net.micode.notes.domain.service.ReminderScheduler;
@@ -31,6 +32,15 @@ public final class AndroidReminderScheduler implements ReminderScheduler {
             alarmManager.cancel(pendingIntent);
             return;
         }
-        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, date, pendingIntent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                && !alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, date, pendingIntent);
+            return;
+        }
+        try {
+            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, date, pendingIntent);
+        } catch (SecurityException exception) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, date, pendingIntent);
+        }
     }
 }

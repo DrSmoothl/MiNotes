@@ -25,7 +25,7 @@
     <Button android:id="@+id/selection_menu"
             android:divider="?android:attr/listDividerAlertDialog"
             android:singleLine="true"
-            android:gravity="left|center_vertical"
+            android:gravity="start|center_vertical"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             style="?android:attr/borderlessButtonStyle" />

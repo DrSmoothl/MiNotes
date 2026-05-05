@@ -302,6 +302,28 @@ public final class NotesListViewModelTest {
                 viewModel.getCurrentState().getPendingExportedFile().getState());
     }
 
+    @Test
+    public void moveNotes_movesSelectedNotesIntoFolderAndPublishesResult() {
+        FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
+        repository.moveNotesResult = true;
+        NotesListViewModel viewModel = new NotesListViewModel(new LoadNotesUseCase(repository),
+                new FolderManagementUseCase(repository), new DeleteNotesUseCase(repository),
+                new ExportNotesUseCase(new FakeBackupRepository()), new DirectExecutor());
+        Set<Long> noteIds = new java.util.HashSet<Long>();
+        noteIds.add(11L);
+        noteIds.add(12L);
+
+        viewModel.moveNotes(noteIds, 5L, "Archive", 2);
+
+        assertEquals(NotesListViewState.PendingAction.MOVE_COMPLETED,
+                viewModel.getCurrentState().getPendingAction());
+        assertTrue(viewModel.getCurrentState().isPendingOperationSucceeded());
+        assertEquals(2, viewModel.getCurrentState().getPendingAffectedCount());
+        assertEquals("Archive", viewModel.getCurrentState().getPendingDestinationFolderName());
+        assertEquals(5L, repository.movedFolderId);
+        assertEquals(noteIds, repository.movedNoteIds);
+    }
+
         @Test
         public void createFolder_withDuplicateNamePublishesConflictAction() {
         FakeNoteRepository repository = new FakeNoteRepository(Collections.<NoteListItem>emptyList());
@@ -415,6 +437,9 @@ public final class NotesListViewModelTest {
         private boolean folderNameExists;
         private boolean renameFolderCalled;
         private boolean deleteNotesCalled;
+        private boolean moveNotesResult;
+        private long movedFolderId;
+        private Set<Long> movedNoteIds = Collections.emptySet();
 
         private FakeNoteRepository(List<NoteListItem> notes) {
             this.notes = notes;
@@ -460,7 +485,9 @@ public final class NotesListViewModelTest {
 
         @Override
         public boolean moveNotes(Set<Long> ids, long folderId) {
-            return false;
+            movedNoteIds = ids;
+            movedFolderId = folderId;
+            return moveNotesResult;
         }
 
         @Override

@@ -24,9 +24,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingLeft="16dp"
+        android:paddingStart="16dp"
         android:paddingTop="8dp"
-        android:paddingRight="16dp"
+        android:paddingEnd="16dp"
         android:paddingBottom="8dp">
 
         <com.google.android.material.textfield.TextInputLayout
@@ -89,9 +89,9 @@
                     android:layout_height="wrap_content"
                     android:clickable="true"
                     android:focusable="true"
-                    android:paddingLeft="8dp"
+                    android:paddingStart="8dp"
                     android:paddingTop="8dp"
-                    android:paddingRight="8dp"
+                    android:paddingEnd="8dp"
                     android:paddingBottom="8dp"
                     android:text="@string/notes_search_clear_history"
                     android:textColor="@color/notes_primary" />
@@ -114,9 +114,9 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:clipToPadding="false"
-        android:paddingLeft="16dp"
+        android:paddingStart="16dp"
         android:paddingTop="6dp"
-        android:paddingRight="16dp"
+        android:paddingEnd="16dp"
         android:paddingBottom="24dp" />
 
     <LinearLayout

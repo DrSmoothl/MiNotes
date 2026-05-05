@@ -181,8 +181,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         private void renderActionMode(ActionMode mode, Menu menu,
                 NotesListViewModel.SelectionUiState selectionUiState) {
             renderMoveActionVisibility(selectionUiState);
-            String format = getResources().getString(R.string.menu_select_title,
-                selectionUiState.getSelectedCount());
+            int selectedCount = selectionUiState.getSelectedCount();
+            String format = getResources().getQuantityString(R.plurals.menu_select_title,
+                    selectedCount, selectedCount);
             mode.setTitle(format);
             MenuItem item = menu.findItem(R.id.action_select_all);
             if (item != null) {
@@ -204,20 +205,21 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 return true;
             }
 
-            switch (item.getItemId()) {
-                case R.id.delete:
-                    requestDeleteSelectedNotesConfirmation(selectionUiState);
-                    return true;
-                case R.id.move:
-                    requestMoveSelectedNotes();
-                    return true;
-                case R.id.action_select_all:
-                    mNotesListAdapter.selectAll(selectionUiState.shouldSelectAllOnToggle());
-                    renderSelectionState();
-                    return true;
-                default:
-                    return false;
+            int itemId = item.getItemId();
+            if (itemId == R.id.delete) {
+                requestDeleteSelectedNotesConfirmation(selectionUiState);
+                return true;
             }
+            if (itemId == R.id.move) {
+                requestMoveSelectedNotes();
+                return true;
+            }
+            if (itemId == R.id.action_select_all) {
+                mNotesListAdapter.selectAll(selectionUiState.shouldSelectAllOnToggle());
+                renderSelectionState();
+                return true;
+            }
+            return false;
         }
 
         public void onDestroyActionMode(ActionMode mode) {
@@ -280,7 +282,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     private void showFolderListMenu(final List<FolderDestination> folders) {
         final NotesListAdapter.SelectionSnapshot selection = mNotesListAdapter.getSelectionSnapshot();
-        AlertDialog.Builder builder = new AlertDialog.Builder(NotesListActivity.this);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(NotesListActivity.this);
         builder.setTitle(R.string.menu_title_select_folder);
         final String[] names = new String[folders.size()];
         for (int i = 0; i < folders.size(); i++) {
@@ -333,18 +335,13 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     public void onClick(View v) {
-        switch (v.getId()) {
-            case R.id.btn_new_note:
-                createNewNote();
-                break;
-            case R.id.button_search_notes:
-                openSearchScreen();
-                break;
-            case R.id.button_settings:
-                startPreferenceActivity();
-                break;
-            default:
-                break;
+        int viewId = v.getId();
+        if (viewId == R.id.btn_new_note) {
+            createNewNote();
+        } else if (viewId == R.id.button_search_notes) {
+            openSearchScreen();
+        } else if (viewId == R.id.button_settings) {
+            startPreferenceActivity();
         }
     }
 
@@ -462,28 +459,17 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.menu_new_folder: {
-                mListViewModel.requestCreateFolderDialog();
-                break;
-            }
-            case R.id.menu_export_text: {
-                mListViewModel.requestExport();
-                break;
-            }
-            case R.id.menu_setting: {
-                startPreferenceActivity();
-                break;
-            }
-            case R.id.menu_new_note: {
-                createNewNote();
-                break;
-            }
-            case R.id.menu_search:
-                openSearchScreen();
-                break;
-            default:
-                break;
+        int itemId = item.getItemId();
+        if (itemId == R.id.menu_new_folder) {
+            mListViewModel.requestCreateFolderDialog();
+        } else if (itemId == R.id.menu_export_text) {
+            mListViewModel.requestExport();
+        } else if (itemId == R.id.menu_setting) {
+            startPreferenceActivity();
+        } else if (itemId == R.id.menu_new_note) {
+            createNewNote();
+        } else if (itemId == R.id.menu_search) {
+            openSearchScreen();
         }
         return true;
     }
@@ -567,7 +553,9 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                     return;
                 }
                 Toast.makeText(this,
-                        getString(R.string.format_move_notes_to_folder,
+                        getResources().getQuantityString(
+                                R.plurals.format_move_notes_to_folder,
+                                state.getPendingAffectedCount(),
                                 state.getPendingAffectedCount(),
                                 state.getPendingDestinationFolderName()),
                         Toast.LENGTH_SHORT).show();
@@ -634,7 +622,7 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void showDeleteFolderConfirmation(NotesListViewState state) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         builder.setTitle(getString(R.string.alert_title_delete));
         builder.setIcon(android.R.drawable.ic_dialog_alert);
         builder.setMessage(getString(R.string.alert_message_delete_folder));
@@ -649,10 +637,11 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
     }
 
     private void showDeleteNotesConfirmation(int selectedCount) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         builder.setTitle(getString(R.string.alert_title_delete));
         builder.setIcon(android.R.drawable.ic_dialog_alert);
-        builder.setMessage(getString(R.string.alert_message_delete_notes, selectedCount));
+        builder.setMessage(getResources().getQuantityString(
+                R.plurals.alert_message_delete_notes, selectedCount, selectedCount));
         builder.setPositiveButton(android.R.string.ok,
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
@@ -728,8 +717,8 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 mHeaderTitle.setText(R.string.notes_home_headline);
             }
             if (mHeaderSubtitle != null) {
-                mHeaderSubtitle.setText(getString(R.string.notes_home_summary) + " "
-                        + getString(R.string.notes_item_count, state.getItemCount()));
+                mHeaderSubtitle.setText(getHeaderSummary(R.string.notes_home_summary,
+                        state.getItemCount()));
             }
             return;
         }
@@ -742,18 +731,25 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
                 mHeaderTitle.setText(R.string.call_record_folder_name);
             }
             if (mHeaderSubtitle != null) {
-                mHeaderSubtitle.setText(getString(R.string.notes_call_summary) + " "
-                        + getString(R.string.notes_item_count, state.getItemCount()));
+                mHeaderSubtitle.setText(getHeaderSummary(R.string.notes_call_summary,
+                        state.getItemCount()));
             }
         } else {
             if (mHeaderTitle != null) {
                 mHeaderTitle.setText(state.getCurrentFolderName());
             }
             if (mHeaderSubtitle != null) {
-                mHeaderSubtitle.setText(getString(R.string.notes_folder_summary) + " "
-                        + getString(R.string.notes_item_count, state.getItemCount()));
+                mHeaderSubtitle.setText(getHeaderSummary(R.string.notes_folder_summary,
+                        state.getItemCount()));
             }
         }
+    }
+
+    private String getHeaderSummary(int summaryResId, int itemCount) {
+        return getString(R.string.format_header_summary,
+                getString(summaryResId),
+                getResources().getQuantityString(R.plurals.notes_item_count,
+                        itemCount, itemCount));
     }
 
     private void showFolderMenu(View anchor, NoteItemData item) {
@@ -765,19 +761,20 @@ public class NotesListActivity extends AppCompatActivity implements OnClickListe
         menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem menuItem) {
-                switch (menuItem.getItemId()) {
-                    case MENU_FOLDER_VIEW:
-                        openFolder(item);
-                        return true;
-                    case MENU_FOLDER_DELETE:
-                        mListViewModel.requestDeleteFolderConfirmation(item);
-                        return true;
-                    case MENU_FOLDER_CHANGE_NAME:
-                        mListViewModel.requestRenameFolderDialog(item);
-                        return true;
-                    default:
-                        return false;
+                int itemId = menuItem.getItemId();
+                if (itemId == MENU_FOLDER_VIEW) {
+                    openFolder(item);
+                    return true;
                 }
+                if (itemId == MENU_FOLDER_DELETE) {
+                    mListViewModel.requestDeleteFolderConfirmation(item);
+                    return true;
+                }
+                if (itemId == MENU_FOLDER_CHANGE_NAME) {
+                    mListViewModel.requestRenameFolderDialog(item);
+                    return true;
+                }
+                return false;
             }
         });
         menu.show();

@@ -68,9 +68,11 @@ public class NotesListItem extends LinearLayout {
             mCallName.setVisibility(View.GONE);
             mAlert.setVisibility(View.VISIBLE);
             mTitle.setTextAppearance(R.style.TextAppearancePrimaryItem);
-            mTitle.setText(context.getString(R.string.call_record_folder_name)
-                    + context.getString(R.string.format_folder_files_count, data.getNotesCount()));
+            mTitle.setText(context.getString(R.string.format_folder_title,
+                    context.getString(R.string.call_record_folder_name),
+                    context.getString(R.string.format_folder_files_count, data.getNotesCount())));
             mAlert.setImageResource(R.drawable.call_record);
+            mAlert.setContentDescription(context.getString(R.string.call_record_folder_name));
         } else if (data.getParentId() == Notes.ID_CALL_RECORD_FOLDER) {
             mCallName.setVisibility(View.VISIBLE);
             mCallName.setText(data.getCallName());
@@ -78,8 +80,11 @@ public class NotesListItem extends LinearLayout {
             mTitle.setText(TextSnippetFormatter.format(data.getSnippet()));
             if (data.hasAlert()) {
                 mAlert.setImageResource(R.drawable.clock);
+                mAlert.setContentDescription(
+                        context.getString(R.string.note_alert_icon_description));
                 mAlert.setVisibility(View.VISIBLE);
             } else {
+                mAlert.setContentDescription(null);
                 mAlert.setVisibility(View.GONE);
             }
         } else {
@@ -87,16 +92,21 @@ public class NotesListItem extends LinearLayout {
             mTitle.setTextAppearance(R.style.TextAppearancePrimaryItem);
 
             if (data.getType() == Notes.TYPE_FOLDER) {
-                mTitle.setText(data.getSnippet()
-                        + context.getString(R.string.format_folder_files_count,
-                                data.getNotesCount()));
+                mTitle.setText(context.getString(R.string.format_folder_title,
+                        data.getSnippet(),
+                        context.getString(R.string.format_folder_files_count,
+                                data.getNotesCount())));
+                mAlert.setContentDescription(null);
                 mAlert.setVisibility(View.GONE);
             } else {
                 mTitle.setText(TextSnippetFormatter.format(data.getSnippet()));
                 if (data.hasAlert()) {
                     mAlert.setImageResource(R.drawable.clock);
+                    mAlert.setContentDescription(
+                            context.getString(R.string.note_alert_icon_description));
                     mAlert.setVisibility(View.VISIBLE);
                 } else {
+                    mAlert.setContentDescription(null);
                     mAlert.setVisibility(View.GONE);
                 }
             }

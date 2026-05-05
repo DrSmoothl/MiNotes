@@ -54,7 +54,7 @@
         <item name="subtitleTextColor">@color/notes_on_surface_muted</item>
     </style>
 
-    <style name="ThemeOverlay.Notes.ToolbarPopup" parent="ThemeOverlay.Material3.Light">
+    <style name="ThemeOverlay.Notes.ToolbarPopup" parent="ThemeOverlay.Material3">
         <item name="android:popupBackground">@drawable/notes_popup_menu_background</item>
         <item name="popupMenuStyle">@style/Widget.Notes.PopupMenu</item>
         <item name="android:textColorPrimary">@color/notes_on_surface</item>
@@ -80,7 +80,7 @@
         <item name="android:textColor">@color/secondary_text_dark</item>
     </style>
 
-    <style name="NotesModernTheme" parent="Theme.Material3.Light.NoActionBar">
+    <style name="NotesModernTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/notes_primary</item>
         <item name="colorOnPrimary">@color/notes_on_primary</item>
         <item name="colorPrimaryContainer">@color/notes_primary_container</item>
@@ -96,7 +96,7 @@
 
     <style name="NotesSettingsTheme" parent="@style/NotesModernTheme" />
 
-    <style name="NoteTheme" parent="@android:style/Theme.Material.Light.NoActionBar" />
+    <style name="NoteTheme" parent="Theme.Material3.DayNight.NoActionBar" />
 
-    <style name="AlarmTheme" parent="@android:style/Theme.Material.Light.Dialog.Alert" />
+    <style name="AlarmTheme" parent="Theme.Material3.DayNight.Dialog.Alert" />
 </resources>

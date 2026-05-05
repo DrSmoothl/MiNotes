@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="notes_primary">#E6B68C</color>
+    <color name="notes_on_primary">#3F210B</color>
+    <color name="notes_primary_container">#5D3518</color>
+    <color name="notes_on_primary_container">#FFDCC2</color>
+    <color name="notes_surface">#15110E</color>
+    <color name="notes_surface_accent">#211A15</color>
+    <color name="notes_surface_container">#2B231E</color>
+    <color name="notes_surface_high">#211B17</color>
+    <color name="notes_on_surface">#F4EAE3</color>
+    <color name="notes_on_surface_muted">#CDBDB2</color>
+    <color name="notes_action_surface">#342A24</color>
+    <color name="notes_outline_soft">#5F5047</color>
+    <color name="notes_card_yellow">#463A1F</color>
+    <color name="notes_card_blue">#1E3A48</color>
+    <color name="notes_card_white">#2C2926</color>
+    <color name="notes_card_green">#243E2C</color>
+    <color name="notes_card_red">#4A2D2D</color>
+    <color name="notes_folder_card">#3A2C22</color>
+    <color name="notes_call_card">#253241</color>
+    <color name="notes_editor_yellow">#332918</color>
+    <color name="notes_editor_blue">#172C38</color>
+    <color name="notes_editor_white">#211D19</color>
+    <color name="notes_editor_green">#1C3022</color>
+    <color name="notes_editor_red">#3A2320</color>
+    <color name="notes_editor_header_yellow">#5B4623</color>
+    <color name="notes_editor_header_blue">#284A5B</color>
+    <color name="notes_editor_header_white">#40362F</color>
+    <color name="notes_editor_header_green">#33513A</color>
+    <color name="notes_editor_header_red">#5B3934</color>
+    <color name="notes_chip_text">#F1D7C5</color>
+    <color name="user_query_highlight">#66A47C32</color>
+</resources>

@@ -24,6 +24,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.preference.PreferenceManager;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -379,10 +380,41 @@ public class SearchNotesActivity extends AppCompatActivity {
         }
 
         private void submit(String query, List<SearchResultItem> results) {
-            this.query = query == null ? "" : query.trim();
+            String oldQuery = this.query;
+            String newQuery = query == null ? "" : query.trim();
+            List<SearchResultItem> oldItems = new ArrayList<SearchResultItem>(items);
+            List<SearchResultItem> newItems = new ArrayList<SearchResultItem>(results);
+            DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+                @Override
+                public int getOldListSize() {
+                    return oldItems.size();
+                }
+
+                @Override
+                public int getNewListSize() {
+                    return newItems.size();
+                }
+
+                @Override
+                public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                    return oldItems.get(oldItemPosition).noteId
+                            == newItems.get(newItemPosition).noteId;
+                }
+
+                @Override
+                public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                    SearchResultItem oldItem = oldItems.get(oldItemPosition);
+                    SearchResultItem newItem = newItems.get(newItemPosition);
+                    return oldItem.modifiedDate == newItem.modifiedDate
+                            && TextUtils.equals(oldItem.snippet, newItem.snippet)
+                            && TextUtils.equals(oldQuery, newQuery);
+                }
+            });
+
+            this.query = newQuery;
             items.clear();
-            items.addAll(results);
-            notifyDataSetChanged();
+            items.addAll(newItems);
+            diffResult.dispatchUpdatesTo(this);
         }
 
         @NonNull

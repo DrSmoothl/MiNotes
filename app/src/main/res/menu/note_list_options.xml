@@ -16,21 +16,22 @@
 -->
 
 <menu
-    xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/move"
         android:title="@string/menu_move"
         android:icon="@drawable/menu_move"
-        android:showAsAction="always|withText" />
+        app:showAsAction="ifRoom|withText" />
 
     <item
         android:id="@+id/delete"
         android:title="@string/menu_delete"
         android:icon="@drawable/menu_delete"
-        android:showAsAction="always|withText" />
+        app:showAsAction="ifRoom|withText" />
 
     <item
         android:id="@+id/action_select_all"
         android:title="@string/menu_select_all"
-        android:showAsAction="never" />
+        app:showAsAction="never" />
 </menu>

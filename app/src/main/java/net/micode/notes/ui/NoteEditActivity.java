@@ -56,6 +56,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.preference.PreferenceManager;
 
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import net.micode.notes.R;
 import net.micode.notes.data.Notes;
@@ -495,39 +496,27 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
         if (state == null) {
             return true;
         }
-        switch (item.getItemId()) {
-            case R.id.menu_new_note:
-                createNewNote();
-                break;
-            case R.id.menu_delete:
-                showDeleteNoteConfirmation();
-                break;
-            case R.id.menu_font_size:
-                showFontSizePickerDialog();
-                break;
-            case R.id.menu_list_mode:
-                if (!state.canToggleListMode()) {
-                    break;
-                }
+        int itemId = item.getItemId();
+        if (itemId == R.id.menu_new_note) {
+            createNewNote();
+        } else if (itemId == R.id.menu_delete) {
+            showDeleteNoteConfirmation();
+        } else if (itemId == R.id.menu_font_size) {
+            showFontSizePickerDialog();
+        } else if (itemId == R.id.menu_list_mode) {
+            if (state.canToggleListMode()) {
                 toggleListMode(state);
-                break;
-            case R.id.menu_share:
-                if (!state.canShare()) {
-                    break;
-                }
+            }
+        } else if (itemId == R.id.menu_share) {
+            if (state.canShare()) {
                 shareCurrentNote();
-                break;
-            case R.id.menu_alert:
-                if (!state.canSetReminder()) {
-                    break;
-                }
+            }
+        } else if (itemId == R.id.menu_alert) {
+            if (state.canSetReminder()) {
                 setReminder();
-                break;
-            case R.id.menu_delete_remind:
-                clearReminder();
-                break;
-            default:
-                break;
+            }
+        } else if (itemId == R.id.menu_delete_remind) {
+            clearReminder();
         }
         return true;
     }
@@ -540,7 +529,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 getString(R.string.note_color_green),
                 getString(R.string.note_color_red)
         };
-        new androidx.appcompat.app.AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.menu_note_color)
                 .setSingleChoiceItems(labels, getBackgroundSelectionIndex(),
                         new DialogInterface.OnClickListener() {
@@ -561,7 +550,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
                 getString(R.string.menu_font_large),
                 getString(R.string.menu_font_super)
         };
-        new androidx.appcompat.app.AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(R.string.menu_font_size)
                 .setSingleChoiceItems(labels, getFontSizeSelectionIndex(),
                         new DialogInterface.OnClickListener() {
@@ -598,7 +587,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
 
     private void applyFontSize(int fontSizeId) {
         mFontSizeId = fontSizeId;
-        mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).commit();
+        mSharedPrefs.edit().putInt(PREFERENCE_FONT_SIZE, mFontSizeId).apply();
         NoteEditViewState state = mNoteEditViewModel.getCurrentState();
         if (state != null && state.isCheckListMode()) {
             renderCheckListDocument(CheckListDocument.fromText(getCurrentEditorContent().text), null);
@@ -640,7 +629,7 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private void showDeleteNoteConfirmation() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
         builder.setTitle(getString(R.string.alert_title_delete));
         builder.setIcon(android.R.drawable.ic_dialog_alert);
         builder.setMessage(getString(R.string.alert_message_delete_note));
@@ -770,7 +759,8 @@ public class NoteEditActivity extends AppCompatActivity implements OnClickListen
     }
 
     private View getListItem(CheckListItem item, int index) {
-        View view = LayoutInflater.from(this).inflate(R.layout.note_edit_list_item, null);
+        View view = LayoutInflater.from(this).inflate(R.layout.note_edit_list_item,
+                mEditTextList, false);
         final NoteEditText edit = (NoteEditText) view.findViewById(R.id.et_edit_text);
         edit.setTextAppearance(TextAppearanceResources.getTexAppearanceResource(mFontSizeId));
         CheckBox cb = ((CheckBox) view.findViewById(R.id.cb_edit_item));

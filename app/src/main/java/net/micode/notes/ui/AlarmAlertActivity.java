@@ -17,7 +17,6 @@
 package net.micode.notes.ui;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnClickListener;
@@ -28,6 +27,7 @@ import android.media.AudioAttributes;
 import android.media.MediaPlayer;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.provider.Settings;
@@ -41,6 +41,8 @@ import net.micode.notes.inject.NotesApplicationGraph;
 import net.micode.notes.tool.TextSnippetFormatter;
 
 import java.io.IOException;
+
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 
 public class AlarmAlertActivity extends Activity implements OnClickListener, OnDismissListener {
@@ -57,11 +59,19 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         final Window win = getWindow();
-        setShowWhenLocked(true);
         mGetAlarmNotePreviewUseCase = new NotesApplicationGraph(this).getAlarmNotePreviewUseCase();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true);
+        } else {
+            addShowWhenLockedFallback(win);
+        }
 
         if (!isScreenOn()) {
-            setTurnScreenOn(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setTurnScreenOn(true);
+            } else {
+                addTurnScreenOnFallback(win);
+            }
             win.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
                 | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
         }
@@ -92,6 +102,16 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
     private boolean isScreenOn() {
         PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
         return pm != null && pm.isInteractive();
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void addShowWhenLockedFallback(Window window) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static void addTurnScreenOnFallback(Window window) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
     }
 
     private void playAlarmSound() {
@@ -125,7 +145,7 @@ public class AlarmAlertActivity extends Activity implements OnClickListener, OnD
     }
 
     private void showActionDialog() {
-        AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+        MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this);
         dialog.setTitle(R.string.app_name);
         dialog.setMessage(mSnippet);
         dialog.setPositiveButton(R.string.notealert_ok, this);

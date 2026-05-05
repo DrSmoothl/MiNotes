@@ -22,7 +22,7 @@
     <string name="app_widget4x4">便簽4x4</string>
     <string name="widget_havenot_content">沒有關聯內容，點擊新建便簽。</string>
     <string name="widget_under_visit_mode">訪客模式下，便籤內容不可見</string>
-    <string name="notelist_string_info">...</string>
+    <string name="notelist_string_info">…</string>
     <string name="notelist_menu_new">新建便簽</string>
     <string name="notes_search_screen_title">搜尋便簽</string>
     <string name="notes_search_results_hint">在全部本地便簽裡快速搜尋。</string>
@@ -36,6 +36,7 @@
     <string name="delete_remind_time_message">成功刪除提醒</string>
     <string name="set_remind_time_message">創建提醒</string>
     <string name="note_alert_expired">已過期</string>
+    <string name="note_alert_icon_description">已設定提醒</string>
     <string name="format_date_ymd">yyyyMMdd</string>
     <string name="format_datetime_mdhm">MM月dd日 kk:mm</string>
     <string name="notealert_ok">知道了</string>
@@ -44,7 +45,12 @@
     <string name="note_link_email">發送郵件</string>
     <string name="note_link_web">浏覽網頁</string>
     <string name="note_link_other">打開地圖</string>
-    <string name="format_move_notes_to_folder">已將所選 %1$d 便籤移到 %2$s 文件夾</string>
+    <plurals name="notes_item_count">
+        <item quantity="other">%1$d 項</item>
+    </plurals>
+    <plurals name="format_move_notes_to_folder">
+        <item quantity="other">已將所選 %1$d 條便籤移到 %2$s 文件夾</item>
+    </plurals>
     <!-- note list string -->
     <string name="menu_create_folder">新建文件夾</string>
     <string name="menu_export_text">導出文本</string>
@@ -54,7 +60,9 @@
     <string name="menu_search">搜尋</string>
     <string name="menu_delete">刪除</string>
     <string name="menu_move">移動到文件夾</string>
-    <string name="menu_select_title">選中了 %d 項</string>
+    <plurals name="menu_select_title">
+        <item quantity="other">選中了 %d 項</item>
+    </plurals>
     <string name="menu_select_none">沒有選中項，操作無效</string>
     <string name="menu_select_all">全選</string>
     <string name="menu_deselect_all">取消全選</string>
@@ -77,7 +85,9 @@
     <string name="menu_move_parent_folder">上一級文件夾</string>
     <string name="info_note_enter_desktop">已添加到桌面</string>
     <string name="alert_title_delete">刪除</string>
-    <string name="alert_message_delete_notes">确认要刪除所選的 %d 條便籤嗎?</string>
+    <plurals name="alert_message_delete_notes">
+        <item quantity="other">确认要刪除所選的 %d 條便籤嗎?</item>
+    </plurals>
     <string name="alert_message_delete_note">确认要删除該條便籤嗎?</string>
     <string name="alert_message_delete_folder">確認刪除檔夾及所包含的便簽嗎？</string>
     <string name="error_sdcard_unmounted">SD卡被佔用，不能操作</string>
@@ -89,7 +99,7 @@
     <string name="failed_sdcard_export">導出失敗</string>
     <string name="format_exported_file_location">已將文本文件(%1$s)導出至SD(%2$s)目錄</string>
     <!-- Sync -->
-    <string name="ticker_syncing">同步便簽...</string>
+    <string name="ticker_syncing">同步便簽…</string>
     <string name="ticker_success">同步成功</string>
     <string name="ticker_fail">同步失敗</string>
     <string name="ticker_cancel">同步已取消</string>
@@ -97,9 +107,9 @@
     <string name="error_sync_network">同步失敗，請檢查網絡和帳號設置</string>
     <string name="error_sync_internal">同步失敗，發生內部錯誤</string>
     <string name="error_sync_cancelled">同步已取消</string>
-    <string name="sync_progress_login">登陸%1$s...</string>
-    <string name="sync_progress_init_list">正在獲取服務器便籤列表...</string>
-    <string name="sync_progress_syncing">正在同步本地便籤...</string>
+    <string name="sync_progress_login">登陸%1$s…</string>
+    <string name="sync_progress_init_list">正在獲取服務器便籤列表…</string>
+    <string name="sync_progress_syncing">正在同步本地便籤…</string>
     <!-- Preferences -->
     <string name="preferences_title">設置</string>
     <string name="preferences_account_title">同步賬號</string>
@@ -118,6 +128,7 @@
     <string name="preferences_toast_cannot_change_account">正在同步中，不能修改同步帳號</string>
     <string name="preferences_toast_success_set_accout">同步帳號已設置為%1$s</string>
     <string name="preferences_bg_random_appear_title">新建便籤背景顏色隨機</string>
+    <string name="preferences_bg_random_appear_summary">每次新建便籤時隨機切換紙張顏色。</string>
 
     <string name="button_delete">刪除</string>
     <string name="call_record_folder_name">通話便籤</string>

@@ -19,6 +19,8 @@ package net.micode.notes.ui;
 import android.content.Context;
 import android.view.View;
 import android.view.ViewGroup;
+
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import net.micode.notes.data.Notes;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 
 
 public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.NoteViewHolder> {
@@ -123,18 +126,53 @@ public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.Note
     }
 
     public void submitList(List<NoteItemData> items) {
+        final ArrayList<NoteItemData> oldItems = new ArrayList<NoteItemData>(mItems);
+        final ArrayList<NoteItemData> newItems = new ArrayList<NoteItemData>();
+        if (items != null) {
+            newItems.addAll(items);
+        }
+
+        DiffUtil.DiffResult diffResult = DiffUtil.calculateDiff(new DiffUtil.Callback() {
+            @Override
+            public int getOldListSize() {
+                return oldItems.size();
+            }
+
+            @Override
+            public int getNewListSize() {
+                return newItems.size();
+            }
+
+            @Override
+            public boolean areItemsTheSame(int oldItemPosition, int newItemPosition) {
+                return oldItems.get(oldItemPosition).getId()
+                        == newItems.get(newItemPosition).getId();
+            }
+
+            @Override
+            public boolean areContentsTheSame(int oldItemPosition, int newItemPosition) {
+                return hasSameContent(oldItems.get(oldItemPosition),
+                        newItems.get(newItemPosition));
+            }
+        });
+
         mItems.clear();
         mSelectedIndex.clear();
-        if (items != null) {
-            mItems.addAll(items);
-        }
+        mItems.addAll(newItems);
         calcNotesCount();
-        notifyDataSetChanged();
+        diffResult.dispatchUpdatesTo(this);
     }
 
     public void setCheckedItem(final int position, final boolean checked) {
+        if (position < 0 || position >= getItemCount()) {
+            return;
+        }
+        Boolean previous = mSelectedIndex.get(position);
+        if (previous != null && previous == checked) {
+            return;
+        }
         mSelectedIndex.put(position, checked);
-        notifyDataSetChanged();
+        notifyItemChanged(position);
     }
 
     public void toggleSelection(int position) {
@@ -147,14 +185,26 @@ public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.Note
 
     public void setChoiceMode(boolean mode) {
         mSelectedIndex.clear();
+        if (mChoiceMode == mode) {
+            return;
+        }
         mChoiceMode = mode;
+        notifyItemRangeChanged(0, getItemCount());
     }
 
     public void selectAll(boolean checked) {
+        boolean changed = false;
         for (int i = 0; i < getItemCount(); i++) {
             if (mItems.get(i).getType() == Notes.TYPE_NOTE) {
-                setCheckedItem(i, checked);
+                Boolean previous = mSelectedIndex.get(i);
+                if (previous == null || previous != checked) {
+                    mSelectedIndex.put(i, checked);
+                    changed = true;
+                }
             }
+        }
+        if (changed) {
+            notifyItemRangeChanged(0, getItemCount());
         }
     }
 
@@ -235,5 +285,21 @@ public class NotesListAdapter extends RecyclerView.Adapter<NotesListAdapter.Note
                 mNotesCount++;
             }
         }
+    }
+
+    private static boolean hasSameContent(NoteItemData oldItem, NoteItemData newItem) {
+        return oldItem.getAlertDate() == newItem.getAlertDate()
+                && oldItem.getBgColorId() == newItem.getBgColorId()
+                && oldItem.getCreatedDate() == newItem.getCreatedDate()
+                && oldItem.hasAttachment() == newItem.hasAttachment()
+                && oldItem.getModifiedDate() == newItem.getModifiedDate()
+                && oldItem.getNotesCount() == newItem.getNotesCount()
+                && oldItem.getParentId() == newItem.getParentId()
+                && oldItem.getType() == newItem.getType()
+                && oldItem.getWidgetId() == newItem.getWidgetId()
+                && oldItem.getWidgetType() == newItem.getWidgetType()
+                && Objects.equals(oldItem.getSnippet(), newItem.getSnippet())
+                && Objects.equals(oldItem.getCallName(), newItem.getCallName())
+                && Objects.equals(oldItem.getPhoneNumber(), newItem.getPhoneNumber());
     }
 }

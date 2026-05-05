@@ -30,14 +30,15 @@ import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.MotionEvent;
-import android.widget.EditText;
+
+import androidx.appcompat.widget.AppCompatEditText;
 
 import net.micode.notes.R;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class NoteEditText extends EditText {
+public class NoteEditText extends AppCompatEditText {
     private static final String TAG = "NoteEditText";
 
     public static final class DeleteRequest {
@@ -153,9 +154,17 @@ public class NoteEditText extends EditText {
                 int off = layout.getOffsetForHorizontal(line, x);
                 Selection.setSelection(getText(), off);
                 break;
+            case MotionEvent.ACTION_UP:
+                performClick();
+                break;
         }
 
         return super.onTouchEvent(event);
+    }
+
+    @Override
+    public boolean performClick() {
+        return super.performClick();
     }
 
     @Override
